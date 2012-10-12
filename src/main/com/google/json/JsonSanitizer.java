@@ -144,15 +144,13 @@ public final class JsonSanitizer {
    */
   private int cleaned;
 
-  private JsonSanitizer(String jsonish) {
+  JsonSanitizer(String jsonish) {
     this.jsonish = jsonish;
   }
 
-  private void sanitize() {
-    if ((cleaned | bracketDepth) != 0) {
-      // Return to consistent state.
-      bracketDepth = cleaned = 0;
-    }
+  void sanitize() {
+    // Return to consistent state.
+    bracketDepth = cleaned = 0;
     sanitizedJson = null;
 
     State state = State.START_ARRAY;
@@ -958,6 +956,10 @@ public final class JsonSanitizer {
     = new UnbracketedComma();
   static {
     UNBRACKETED_COMMA.setStackTrace(new StackTraceElement[0]);
+  }
+
+  CharSequence toCharSequence() {
+    return sanitizedJson != null ? sanitizedJson : jsonish;
   }
 
   @Override

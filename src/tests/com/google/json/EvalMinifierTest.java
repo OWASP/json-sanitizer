@@ -23,7 +23,7 @@ import com.google.json.EvalMinifier.NameGenerator;
 public final class EvalMinifierTest extends TestCase {
 
   private void assertMinified(String golden, String input) {
-    String actual = EvalMinifier.minify(JsonSanitizer.sanitize(input));
+    String actual = EvalMinifier.minify(input);
     assertEquals(input, golden, actual);
   }
 
@@ -49,6 +49,22 @@ public final class EvalMinifierTest extends TestCase {
         + "}(\"foo\",\"bar\"))",
         "['foo','bar','foo','bar','foo','bar','foo','bar','foo','bar','foo',"
         + "'bar','foo','bar','foo','bar','foo','bar','foo','bar','foo','z']");
+
+    String longStr = "\"A very very very very loooooooong string that can be"
+        + " pooled, but not when it appears as a property name.\"";
+    assertMinified(
+        "(function(a){return"
+        + "{" + longStr + ":a,\"a\":[a,a,42,null,a]}}(" + longStr + "))",
+        "{" + longStr + ": " + longStr + ","
+        + " a:[" + longStr + "," + longStr + ",42,," + longStr + "]}");
+
+    assertMinified(
+        "(function(a){return"
+        // Don't convert 123456.789 to a.789
+        + "[a,a,a,a,123456.789,a,a,a,a,a,a,a,a,a,123456e-3,a,a,a]"
+        + "}(123456))",
+        "[123456,123456,123456,123456,123456.789,123456,123456,123456,123456,"
+        + "123456,123456,123456,123456,123456,123456e-3,123456,123456,123456]");
   }
 
   @Test

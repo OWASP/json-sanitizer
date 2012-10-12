@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -28,11 +29,13 @@ import java.util.Map;
  */
 public final class EvalMinifier {
 
-  public static String minify(String json) {
-    return minify((CharSequence) json).toString();
+  public static String minify(String jsonish) {
+    JsonSanitizer s = new JsonSanitizer(jsonish);
+    s.sanitize();
+    return minify(s.toCharSequence()).toString();
   }
 
-  public static CharSequence minify(CharSequence json) {
+  private static CharSequence minify(CharSequence json) {
     Map<Token, Token> pool = new HashMap<Token, Token>();
     int n = json.length();
     for (int i = 0; i < n; ++i) {
@@ -56,21 +59,41 @@ public final class EvalMinifier {
       } else {
         continue;
       }
-      if (tokEnd - i >= 4) {
+
+      int nextNonWhitespace = tokEnd;
+      for (; nextNonWhitespace < n; ++nextNonWhitespace) {
+        char wch = json.charAt(nextNonWhitespace);
+        if (!(wch == '\t' || wch == '\n' || wch == '\r' || wch == ' ')) {
+          break;
+        }
+      }
+
+      // If the string is followed by a ':' then it is a map key and cannot be
+      // substituted with an identifier.
+      // In JavaScript, { a: 1 } is the same as { "a": 1 } regardless of
+      // what the identifier "a" resolves to.
+      if (nextNonWhitespace == n || ':' != json.charAt(nextNonWhitespace)
+          && tokEnd - i >= 4) {
         Token tok = new Token(i, tokEnd, json);
         Token last = pool.put(tok, tok);
         if (last != null) {
           tok.prev = last;
         }
       }
+
+      i = nextNonWhitespace - 1;
     }
 
     // Now look at all the token groups that have a next, and then count up the
     // savings to see if they meet the cost of the boilerplate.
     int potentialSavings = 0;
     List<Token> dupes = new ArrayList<Token>();
-    for (Token tok : pool.values()) {
-      if (tok.prev == null) { continue; }
+    for (Iterator<Token> values = pool.values().iterator(); values.hasNext();) {
+      Token tok = values.next();
+      if (tok.prev == null) {
+        values.remove();
+        continue;
+      }
       int chainDepth = 0;
       for (Token t = tok; t != null; t = t.prev) {
         ++chainDepth;
@@ -113,15 +136,26 @@ public final class EvalMinifier {
     while (true) {
       Token tok = tokIndex < nTokens ? dupes.get(tokIndex++) : null;
       int limit = tok != null ? tok.start : n;
+      boolean inString = false;
       for (int i = pos; i < limit; ++i) {
         char ch = json.charAt(i);
-        if (ch == '\t' || ch == '\n' || ch == '\r' || ch == ' ') {
+        if (inString) {
+          if (ch == '"') {
+            inString = false;
+          } else if (ch == '\\') {
+            ++i;
+          }
+        } else if (ch == '\t' || ch == '\n' || ch == '\r' || ch == ' ') {
           if (pos != i) {
             sb.append(json, pos, i);
           }
           pos = i + 1;
+        } else if (ch == '"') {
+          inString = true;
         }
       }
+      // There should be no token boundaries inside strings.
+      assert !inString;
       if (pos != limit) {
         sb.append(json, pos, limit);
       }
