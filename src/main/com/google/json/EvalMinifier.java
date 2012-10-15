@@ -22,6 +22,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 /**
  * Given a string of valid JSON that is going to be parsed via JavaScript's
  * {@code eval} builtin, tries to reduce the number of bytes sent over
@@ -75,7 +78,7 @@ public final class EvalMinifier {
       if (nextNonWhitespace == n || ':' != json.charAt(nextNonWhitespace)
           && tokEnd - i >= 4) {
         Token tok = new Token(i, tokEnd, json);
-        Token last = pool.put(tok, tok);
+        @Nullable Token last = pool.put(tok, tok);
         if (last != null) {
           tok.prev = last;
         }
@@ -203,9 +206,9 @@ public final class EvalMinifier {
 
   private static final class Token implements Comparable<Token> {
     private final int start, end, hashCode;
-    private final CharSequence seq;
-    Token prev;
-    String name;
+    private final @Nonnull CharSequence seq;
+    @Nullable Token prev;
+    @Nullable String name;
 
     Token(int start, int end, CharSequence seq) {
       this.start = start;
@@ -220,7 +223,7 @@ public final class EvalMinifier {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
       if (!(o instanceof Token)) { return false; }
       Token that = (Token) o;
       if (this.hashCode != that.hashCode) { return false; }

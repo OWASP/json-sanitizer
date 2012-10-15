@@ -741,7 +741,8 @@ public final class JsonSanitizer {
     canonicalizeNumber(sanitizedJson, sanStart, sanEnd);
   }
 
-  private static void canonicalizeNumber(StringBuilder sanitizedJson, int sanStart, int sanEnd) {
+  private static void canonicalizeNumber(
+      StringBuilder sanitizedJson, int sanStart, int sanEnd) {
     // Now we perform several steps.
     // 1. Convert from scientific notation to regular or vice-versa based on
     //    normalized exponent.
