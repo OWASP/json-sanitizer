@@ -1,6 +1,7 @@
 SRCS=src/main/com/google/json/*.java
+CP=lib/jsr305/jsr305.jar
 TESTS=src/tests/com/google/json/*.java
-JUNIT=lib/junit/junit.jar
+TEST_CP=out/classes:$(CP):lib/junit/junit.jar
 
 all: test-classes jar runtests
 
@@ -10,12 +11,13 @@ clean:
 classes: out/classes.tstamp
 out/classes.tstamp: $(SRCS)
 	mkdir -p out/classes
-	javac -d out/classes $(SRCS) && touch out/classes.tstamp
+	javac -d out/classes -classpath "$(CP)" $(SRCS) \
+	  && touch out/classes.tstamp
 
 test-classes: out/test-classes.tstamp out/test-classes/com/google/json/alltests
 out/test-classes.tstamp: classes $(TESTS)
 	mkdir -p out/test-classes
-	javac -d out/test-classes -classpath "out/classes:$(JUNIT)" $(TESTS) \
+	javac -d out/test-classes -classpath "$(TEST_CP)" $(TESTS) \
 	  && touch out/test-classes.tstamp
 out/test-classes/com/google/json/alltests: $(TESTS)
 	echo $^ | tr ' ' '\n' | \
@@ -28,5 +30,5 @@ jar: classes
 	  -C out/classes com
 
 runtests: test-classes
-	java -classpath out/classes:out/test-classes:${JUNIT} \
-	  junit.textui.TestRunner com.google.json.AllTests
+	java -classpath "out/test-classes:$(TEST_CP)" junit.textui.TestRunner \
+	  com.google.json.AllTests
