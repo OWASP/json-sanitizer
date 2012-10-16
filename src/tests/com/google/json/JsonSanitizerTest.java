@@ -28,17 +28,23 @@ public final class JsonSanitizerTest extends TestCase {
     }
   }
 
+  private static void assertSanitized(String sanitary) {
+    assertSanitized(sanitary, sanitary);
+  }
+
   @Test
   public final void testSanitize() {
+    // On the left is the sanitized output, and on the right the input.
+    // If there is a single string, then the input is fine as-is.
     assertSanitized("null", "");
-    assertSanitized("null", "null");
-    assertSanitized("false", "false");
-    assertSanitized("true", "true");
-    assertSanitized(" false ", " false ");
-    assertSanitized("  false", "  false");
-    assertSanitized("false\n", "false\n");
+    assertSanitized("null");
+    assertSanitized("false");
+    assertSanitized("true");
+    assertSanitized(" false ");
+    assertSanitized("  false");
+    assertSanitized("false\n");
     assertSanitized("false", "false,true");
-    assertSanitized("\"foo\"", "\"foo\"");
+    assertSanitized("\"foo\"");
     assertSanitized("\"foo\"", "'foo'");
     assertSanitized(
         "\"<script>foo()<\\/script>\"", "\"<script>foo()</script>\"");
@@ -46,9 +52,11 @@ public final class JsonSanitizerTest extends TestCase {
         "\"<script>foo()<\\/script>\"", "\"<script>foo()</script>\"");
     assertSanitized("\"<\\/SCRIPT\\n>\"", "\"</SCRIPT\n>\"");
     assertSanitized("\"<\\/ScRIpT\"", "\"</ScRIpT\"");
+    // \u0130 is a Turkish dotted upper-case 'I' so the lower case version of
+    // the tag name is "script".
     assertSanitized("\"<\\/ScR\u0130pT\"", "\"</ScR\u0130pT\"");
-    assertSanitized("\"<b>Hello</b>\"", "\"<b>Hello</b>\"");
-    assertSanitized("\"<s>Hello</s>\"", "\"<s>Hello</s>\"");
+    assertSanitized("\"<b>Hello</b>\"");
+    assertSanitized("\"<s>Hello</s>\"");
     assertSanitized("\"<[[\\u005d]>\"", "'<[[]]>'");
     assertSanitized("\"\\u005d]>\"", "']]>'");
     assertSanitized("[[0]]", "[[0]]>");
@@ -56,7 +64,7 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("[1,2,3]", "[1,2,3,]");
     assertSanitized("[1,null,3]", "[1,,3,]");
     assertSanitized("[1 ,2 ,3]", "[1 2 3]");
-    assertSanitized("{ \"foo\": \"bar\" }", "{ \"foo\": \"bar\" }");
+    assertSanitized("{ \"foo\": \"bar\" }");
     assertSanitized("{ \"foo\": \"bar\" }", "{ \"foo\": \"bar\", }");
     assertSanitized("{\"foo\":\"bar\"}", "{\"foo\",\"bar\"}");
     assertSanitized("{ \"foo\": \"bar\" }", "{ foo: \"bar\" }");
@@ -69,7 +77,16 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("false", "false/* comment *");
     assertSanitized("false", "false/* comment ");
     assertSanitized("false", "/*/true**/false");
-    assertSanitized("1.0", "1.0");
+    assertSanitized("1");
+    assertSanitized("-1");
+    assertSanitized("1.0");
+    assertSanitized("-1.0");
+    assertSanitized("1.05");
+    assertSanitized("427.0953333");
+    assertSanitized("6.0221412927e+23");
+    assertSanitized("6.0221412927e23");
+    assertSanitized("1.660538920287695E-24");
+    assertSanitized("-6.02e-23");
     assertSanitized("1.0", "1.");
     assertSanitized("0.5", ".5");
     assertSanitized("-0.5", "-.5");
@@ -97,7 +114,7 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("{\"1.234e+101\":0}", "{12.34e100:0}");
     assertSanitized("{\"1.234e-102\":0}", "{.01234e-100:0}");
     assertSanitized("{\"1.234e-102\":0}", "{.01234e-100:0}");
-    assertSanitized("{}", "{}");
+    assertSanitized("{}");
     assertSanitized("{}", "({})");
   }
 
