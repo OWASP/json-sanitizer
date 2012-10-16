@@ -85,6 +85,9 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("427.0953333");
     assertSanitized("6.0221412927e+23");
     assertSanitized("6.0221412927e23");
+    assertSanitized("6.0221412927e0", "6.0221412927e");
+    assertSanitized("6.0221412927e-0", "6.0221412927e-");
+    assertSanitized("6.0221412927e+0", "6.0221412927e+");
     assertSanitized("1.660538920287695E-24");
     assertSanitized("-6.02e-23");
     assertSanitized("1.0", "1.");
