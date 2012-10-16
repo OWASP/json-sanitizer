@@ -42,9 +42,16 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("\"foo\"", "'foo'");
     assertSanitized(
         "\"<script>foo()<\\/script>\"", "\"<script>foo()</script>\"");
+    assertSanitized(
+        "\"<script>foo()<\\/script>\"", "\"<script>foo()</script>\"");
+    assertSanitized("\"<\\/SCRIPT\\n>\"", "\"</SCRIPT\n>\"");
+    assertSanitized("\"<\\/ScRIpT\"", "\"</ScRIpT\"");
+    assertSanitized("\"<\\/ScR\u0130pT\"", "\"</ScR\u0130pT\"");
     assertSanitized("\"<b>Hello</b>\"", "\"<b>Hello</b>\"");
     assertSanitized("\"<s>Hello</s>\"", "\"<s>Hello</s>\"");
     assertSanitized("\"<[[\\u005d]>\"", "'<[[]]>'");
+    assertSanitized("\"\\u005d]>\"", "']]>'");
+    assertSanitized("[[0]]", "[[0]]>");
     assertSanitized("[1,-1,0.0,-0.5,1e2]", "[1,-1,0.0,-0.5,1e2,");
     assertSanitized("[1,2,3]", "[1,2,3,]");
     assertSanitized("[1,null,3]", "[1,,3,]");
