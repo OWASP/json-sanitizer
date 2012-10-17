@@ -120,7 +120,7 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("{}");
     // Remove grouping parentheses.
     assertSanitized("{}", "({})");
-    // Escape code-points and orphaned surrogates which are not XML embeddable.
+    // Escape code-points and isolated surrogates which are not XML embeddable.
     assertSanitized("\"\\u0000\\u0008\\u001f\"", "'\u0000\u0008\u001f'");
     assertSanitized("\"\ud800\udc00\\udc00\\ud800\"",
                     "'\ud800\udc00\udc00\ud800'");

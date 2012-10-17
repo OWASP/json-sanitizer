@@ -59,13 +59,13 @@ package com.google.json;
  *   further encoding.
  * <li>The output will not contain the substring {@code "]]>"} so can be
  *   embedded inside an XML CDATA section without further encoding.</li>
- * <li>The output is a valid JavaScript expression, so can be parsed by
- *   JavaScript's <code>eval</code> builtin (after being wrapped in parentheses)
+ * <li>The output is a valid Javascript expression, so can be parsed by
+ *   Javascript's <code>eval</code> builtin (after being wrapped in parentheses)
  *   or by <code>JSON.parse</code>.
  *   Specifically, the output will not contain any string literals with embedded
  *   JS newlines (U+2028 Paragraph separator or U+2029 Line separator).
  * <li>The output contains only valid Unicode scalar values
- *   (no orphaned UTF-16 surrogates) that are
+ *   (no isolated UTF-16 surrogates) that are
  *   <a href="http://www.w3.org/TR/xml/#charsets">allowed in XML</a> unescaped.
  * </ol>
  *
@@ -73,6 +73,14 @@ package com.google.json;
  * Since the output is well-formed JSON, passing it to <code>eval</code> will
  * have no side-effects and no free variables, so is neither a code-injection
  * vector, nor a vector for exfiltration of secrets.
+ *
+ * <p>This library only ensures that the JSON string &rarr; Javascript object
+ * phase has no side effects and resolves no free variables, and cannot control
+ * how other client side code later interprets the resulting Javascript object.
+ * So if client-side code takes a part of the parsed data that is controlled by
+ * an attacker and passes it back through a powerful interpreter like
+ * {@code eval} or {@code innerHTML} then that client-side code might suffer
+ * unintended side-effects.
  *
  * <h3>Efficiency</h3>
  * The sanitize method will return the input string without allocating a new
@@ -401,15 +409,15 @@ public final class JsonSanitizer {
 
   /**
    * Ensures that the output corresponding to {@code jsonish[start:end]} is a
-   * valid JSON string that has the same meaning when parsed by JavaScript
+   * valid JSON string that has the same meaning when parsed by Javascript
    * {@code eval}.
    * <ul>
    *   <li>Making sure that it is fully quoted with double-quotes.
-   *   <li>Escaping any JavaScript newlines : CR, LF, U+2028, U+2029
+   *   <li>Escaping any Javascript newlines : CR, LF, U+2028, U+2029
    *   <li>Escaping HTML special characters to allow it to be safely embedded
    *       in HTML {@code <script>} elements and XML {@code <!CDATA[...]]>}
    *       sections.
-   *   <li>Rewrite hex, octal, and other escapes that are valid in JavaScript
+   *   <li>Rewrite hex, octal, and other escapes that are valid in Javascript
    *       but not in JSON.
    * </ul>
    * @param start inclusive
@@ -513,7 +521,7 @@ public final class JsonSanitizer {
           }
           break;
         default:
-          // Escape all control code-points and orphaned surrogates which are
+          // Escape all control code-points and isolated surrogates which are
           // not embeddable in XML.
           // http://www.w3.org/TR/xml/#charsets says
           //     Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD]
