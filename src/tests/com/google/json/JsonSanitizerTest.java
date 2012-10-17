@@ -118,7 +118,17 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("{\"1.234e-102\":0}", "{.01234e-100:0}");
     assertSanitized("{\"1.234e-102\":0}", "{.01234e-100:0}");
     assertSanitized("{}");
+    // Remove grouping parentheses.
     assertSanitized("{}", "({})");
+    // Escape code-points and orphaned surrogates which are not XML embeddable.
+    assertSanitized("\"\\u0000\\u0008\\u001f\"", "'\u0000\u0008\u001f'");
+    assertSanitized("\"\ud800\udc00\\udc00\\ud800\"",
+                    "'\ud800\udc00\udc00\ud800'");
+    assertSanitized("\"\ufffd\\ufffe\\uffff\"", "'\ufffd\ufffe\uffff'");
+    // These control characters should be elided if they appear outside a string
+    // literal.
+    assertSanitized("42", "\uffef\u000042\u0008\ud800\uffff\udc00");
+    assertSanitized("null", "\uffef\u0000\u0008\ud800\uffff\udc00");
   }
 
 }

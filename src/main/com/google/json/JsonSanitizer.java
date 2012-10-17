@@ -64,6 +64,9 @@ package com.google.json;
  *   or by <code>JSON.parse</code>.
  *   Specifically, the output will not contain any string literals with embedded
  *   JS newlines (U+2028 Paragraph separator or U+2029 Line separator).
+ * <li>The output contains only valid Unicode scalar values
+ *   (no orphaned UTF-16 surrogates) that are
+ *   <a href="http://www.w3.org/TR/xml/#charsets">allowed in XML</a> unescaped.
  * </ol>
  *
  * <h3>Security</h3>
@@ -303,7 +306,6 @@ public final class JsonSanitizer {
             break;
 
           default:
-            state = requireValueState(i, state, true);
             // Three kinds of other values can occur.
             // 1. Numbers
             // 2. Keyword values ("false", "null", "true")
@@ -331,6 +333,8 @@ public final class JsonSanitizer {
               elide(i, i + 1);
               break;
             }
+
+            state = requireValueState(i, state, true);
 
             boolean isNumber = ('0' <= ch && ch <= '9')
                || ch == '.' || ch == '+' || ch == '-';
@@ -368,7 +372,7 @@ public final class JsonSanitizer {
       }
     }
 
-    if (state == State.START_ARRAY && cleaned == 0 && bracketDepth == 0) {
+    if (state == State.START_ARRAY && bracketDepth == 0) {
       // No tokens.  Only whitespace
       insert(n, "null");
     }
@@ -506,6 +510,30 @@ public final class JsonSanitizer {
               // "\-" is valid JS but not valid JSON.
               elide (i, i + 1);
               break;
+          }
+          break;
+        default:
+          // Escape all control code-points and orphaned surrogates which are
+          // not embeddable in XML.
+          // http://www.w3.org/TR/xml/#charsets says
+          //     Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD]
+          //            | [#x10000-#x10FFFF]
+          if (ch < 0x20) {
+            if (ch == 9 || ch == 0xa || ch == 0xd) { continue; }
+          } else if (ch < 0xd800) {  // Not a surrogate.
+            continue;
+          } else if (ch < 0xe000) {  // A surrogate
+            if (Character.isHighSurrogate(ch) && i+1 < end
+                && Character.isLowSurrogate(jsonish.charAt(i+1))) {
+              ++i;  // Skip over low surrogate since we have already vetted it.
+              continue;
+            }
+          } else if (ch <= 0xfffd) {  // Not one of the 0xff.. controls.
+            continue;
+          }
+          replace(i, i + 1, "\\u");
+          for (int j = 4; --j >= 0;) {
+            sanitizedJson.append(HEX_DIGITS[(ch >>> (j << 2)) & 0xf]);
           }
           break;
       }
@@ -967,4 +995,9 @@ public final class JsonSanitizer {
   public String toString() {
     return sanitizedJson != null ? sanitizedJson.toString() : jsonish;
   }
+
+  private static final char[] HEX_DIGITS = new char[] {
+    '0', '1', '2', '3', '4', '5', '6', '7',
+    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+  };
 }
