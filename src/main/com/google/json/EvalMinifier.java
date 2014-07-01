@@ -26,12 +26,27 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /**
- * Given a string of valid JSON that is going to be parsed via JavaScript's
+ * Given a string of valid JSON that is going to be parsed via Javascript's
  * {@code eval} builtin, tries to reduce the number of bytes sent over
- * the wire by turning it into a JavaScript expression that pools constants.
+ * the wire by turning it into a Javascript expression that pools constants.
  */
 public final class EvalMinifier {
 
+  /**
+   * Renders JSON-like content safe for use with Javascript {@code eval}.
+   *
+   * <p>The output is a Javascript expression, not a statement, so if it
+   * contains an object (<code>{</code><i>properties</i><code>}</code>) then it
+   * still needs to be wrapped in parentheses before being passed to
+   * {@code eval} as via {@code eval('(' + s + ')')} or {@code eval('0,' + s)}.
+   *
+   * @param jsonish a string of JSON-like content as defined by
+   *   {@link JsonSanitizer}.
+   * @return a valid Javascript expression that has no free variables and whose
+   *   execution will have no side-effects, and which can be embedded safely in
+   *   an HTML {@code <script></script>} element or inside an XML
+   *   {@code <![CDATA[...]]>} section.
+   */
   public static String minify(String jsonish) {
     JsonSanitizer s = new JsonSanitizer(jsonish);
     s.sanitize();
