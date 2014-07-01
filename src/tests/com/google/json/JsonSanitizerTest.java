@@ -35,7 +35,7 @@ public final class JsonSanitizerTest extends TestCase {
   @Test
   public final void testSanitize() {
     // On the left is the sanitized output, and on the right the input.
-    // If there is a single string, then the input is fine as-is.
+    // If there is a single string, then the input is fine as-is.  
     assertSanitized("null", "");
     assertSanitized("null");
     assertSanitized("false");
@@ -129,6 +129,8 @@ public final class JsonSanitizerTest extends TestCase {
     // literal.
     assertSanitized("42", "\uffef\u000042\u0008\ud800\uffff\udc00");
     assertSanitized("null", "\uffef\u0000\u0008\ud800\uffff\udc00");
+    // This test case is reported in bug 3 and will now fail on purpose
+    assertSanitized("{}", "[{{},ä");
   }
 
 }
