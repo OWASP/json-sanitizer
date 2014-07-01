@@ -516,7 +516,7 @@ public final class JsonSanitizer {
             default:
               // Literal char that is recognized by JS but not by JSON.
               // "\-" is valid JS but not valid JSON.
-              elide (i, i + 1);
+              elide(i, i + 1);
               break;
           }
           break;
@@ -647,13 +647,13 @@ public final class JsonSanitizer {
     }
     assert sanitizedJson != null;
     for (int i = sanitizedJson.length(); --i >= 0;) {
-      switch (jsonish.charAt(i)) {
+      switch (sanitizedJson.charAt(i)) {
         case '\t': case '\n': case '\r': case ' ':
           continue;
         case ',':
           sanitizedJson.setLength(i);
           return;
-        default: throw new AssertionError("" + jsonish.charAt(i));
+        default: throw new AssertionError("" + sanitizedJson.charAt(i));
       }
     }
     throw new AssertionError(

@@ -129,8 +129,15 @@ public final class JsonSanitizerTest extends TestCase {
     // literal.
     assertSanitized("42", "\uffef\u000042\u0008\ud800\uffff\udc00");
     assertSanitized("null", "\uffef\u0000\u0008\ud800\uffff\udc00");
-    // This test case is reported in bug 3 and will now fail on purpose
-    assertSanitized("{}", "[{{},ä");
+    assertSanitized("[null]", "[,]");
+    assertSanitized("[null]", "[null,]");
+  }
+
+  @Test
+  public final void testIssue3() {
+    // These triggered index out of bounds and assertion errors.
+    assertSanitized("[{\"\":{}}]", "[{{},\u00E4");
+    assertSanitized("[{\"\":{}}]", "[{{\u00E4\u00E4},\u00E4");
   }
 
 }
