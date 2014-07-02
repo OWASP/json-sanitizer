@@ -35,7 +35,8 @@ public final class JsonSanitizerTest extends TestCase {
   @Test
   public final void testSanitize() {
     // On the left is the sanitized output, and on the right the input.
-    // If there is a single string, then the input is fine as-is.  
+    // If there is a single string, then the input is fine as-is.
+    assertSanitized("null", null);
     assertSanitized("null", "");
     assertSanitized("null");
     assertSanitized("false");

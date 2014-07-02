@@ -156,7 +156,7 @@ public final class JsonSanitizer {
   private int cleaned;
 
   JsonSanitizer(String jsonish) {
-    this.jsonish = jsonish;
+    this.jsonish = jsonish != null ? jsonish : "null";
   }
 
   void sanitize() {
