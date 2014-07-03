@@ -8,6 +8,21 @@
   <version>1.0-SNAPSHOT</version>
   <name>json-sanitizer</name>
   <url>https://code.google.com/p/json-sanitizer</url>
+  <description>
+Given JSON-like content, converts it to valid JSON.
+
+This can be attached at either end of a data-pipeline to help satisfy
+Postel's principle:
+
+    be conservative in what you do, be liberal in what you accept from
+    others
+
+Applied to JSON-like content from others, it will produce well-formed
+JSON that should satisfy any parser you use.
+
+Applied to your output before you send, it will coerce minor mistakes in
+encoding and make it easier to embed your JSON in HTML and XML.
+  </description>
 
   <licenses>
     <license>
@@ -19,6 +34,7 @@
 
   <scm>
     <url>https://code.google.com/p/json-sanitizer/</url>
+    <connection>scm:git:https://code.google.com/p/json-sanitizer/</connection>
   </scm>
 
   <dependencies>
