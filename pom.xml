@@ -72,6 +72,30 @@ encoding and make it easier to embed your JSON in HTML and XML.
     </dependency>
   </dependencies>
 
+
+  <reporting>
+    <plugins>
+      <!-- `mvn compile site` will generate target/site/findbugs.html -->
+      <!-- http://mojo.codehaus.org/findbugs-maven-plugin/usage.html -->
+      <!-- http://www.petrikainulainen.net/programming/maven/findbugs-maven-plugin-tutorial/ -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>findbugs-maven-plugin</artifactId>
+        <version>2.5.2</version>
+        <configuration>
+          <!--
+            Enables analysis which takes more memory but finds more bugs.
+            If you run out of memory, changes the value of the effort element
+            to 'Low'.
+          -->
+          <effort>Max</effort>
+          <!-- Reports all bugs (other values are medium and max) -->
+          <threshold>Low</threshold>
+        </configuration>
+      </plugin>
+    </plugins>
+  </reporting>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>

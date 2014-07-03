@@ -685,6 +685,8 @@ public final class JsonSanitizer {
         case '-':
           ++pos;
           break;
+        default:
+          break;
       }
     }
 
@@ -743,6 +745,7 @@ public final class JsonSanitizer {
         switch (jsonish.charAt(pos)) {
           // JSON allows explicit + in exponent but not for number as a whole.
           case '+': case '-': ++pos; break;
+          default: break;
         }
       }
       // JSON allows leading zeros on exponent part.
@@ -791,7 +794,6 @@ public final class JsonSanitizer {
     // Figure out where the parts of the number start and end.
     int intStart, intEnd, fractionStart, fractionEnd, expStart, expEnd;
     intStart = sanStart + (sanitizedJson.charAt(sanStart) == '-' ? 1 : 0);
-    intEnd = intStart;
     for (intEnd = intStart; intEnd < sanEnd; ++intEnd) {
       char ch = sanitizedJson.charAt(intEnd);
       if (!('0' <= ch && ch <= '9')) { break; }
@@ -813,6 +815,13 @@ public final class JsonSanitizer {
       if (sanitizedJson.charAt(expStart) == '+') { ++expStart; }
       expEnd = sanEnd;
     }
+
+    assert
+         intStart      <= intEnd
+      && intEnd        <= fractionStart
+      && fractionStart <= fractionEnd
+      && fractionEnd   <= expStart
+      && expStart      <= expEnd;
 
     int exp = expEnd == expStart
         ? 0 : Integer.parseInt(sanitizedJson.substring(expStart, expEnd));
