@@ -4,9 +4,23 @@
   <groupId>com.google.json</groupId>
   <artifactId>json-sanitizer</artifactId>
   <packaging>jar</packaging>
+
   <version>1.0-SNAPSHOT</version>
   <name>json-sanitizer</name>
-  <url>http://maven.apache.org</url>
+  <url>https://code.google.com/p/json-sanitizer</url>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <scm>
+    <url>https://code.google.com/p/json-sanitizer/</url>
+  </scm>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -21,6 +35,7 @@
       <scope>compile</scope>
     </dependency>
   </dependencies>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
