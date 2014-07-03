@@ -33,9 +33,21 @@ encoding and make it easier to embed your JSON in HTML and XML.
   </licenses>
 
   <scm>
-    <url>https://code.google.com/p/json-sanitizer/</url>
     <connection>scm:git:https://code.google.com/p/json-sanitizer/</connection>
+    <developerConnection>scm:git:https://code.google.com/p/json-sanitizer/</developerConnection>
+    <url>https://code.google.com/p/json-sanitizer/</url>
   </scm>
+
+  <!--
+    https://docs.sonatype.org/display/Repository/
+    Sonatype+OSS+Maven+Repository+Usage+Guide
+    #SonatypeOSSMavenRepositoryUsageGuide-7a.1.POMandsettingsconfig
+  -->
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
 
   <developers>
     <developer>
