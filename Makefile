@@ -1,6 +1,6 @@
 SRCS=src/main/java/com/google/json/*.java
 CP=lib/jsr305/jsr305.jar
-TESTS=src/tests/java/com/google/json/*.java
+TESTS=src/test/java/com/google/json/*.java
 TEST_CP=out/classes:$(CP):lib/junit/junit.jar
 
 all: test-classes jar runtests
@@ -21,7 +21,7 @@ out/test-classes.tstamp: classes $(TESTS)
 	  && touch out/test-classes.tstamp
 out/test-classes/com/google/json/alltests: $(TESTS)
 	echo $^ | tr ' ' '\n' | \
-	  perl -ne 's#^src/tests/java/|\.java$$##g; s#/#.#g; print if m/Test$$/' \
+	  perl -ne 's#^src/test/java/|\.java$$##g; s#/#.#g; print if m/Test$$/' \
 	  > $@ \
 	  || rm $@
 
