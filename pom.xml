@@ -37,6 +37,14 @@ encoding and make it easier to embed your JSON in HTML and XML.
     <connection>scm:git:https://code.google.com/p/json-sanitizer/</connection>
   </scm>
 
+  <developers>
+    <developer>
+      <id>mikesamuel</id>
+      <name>Mike Samuel</name>
+      <email>mikesamuel@gmail.com</email>
+    </developer>
+  </developers>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
