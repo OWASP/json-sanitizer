@@ -134,6 +134,13 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("[null]", "[null,]");
     assertSanitized("{\"a\":0,\"false\":\"x\",\"\":{\"\":-1}}",
                     "{\"a\":0,false\"x\":{\"\":-1}}");
+    assertSanitized("[true ,false]", "[true false]");
+    assertSanitized("[\"\\u00a0\\u1234\"]");
+    assertSanitized("{\"a\":\"b\",\"c\":null}", "{a\\b\"c");
+    assertSanitized("{\"a\":\"b\",\"c\":null}", "{\"a\":\"b\",\"c\":");
+    assertSanitized("1e0001234567890123456789123456789123456789");
+    assertSanitized("1e01");
+    assertSanitized("-2035208041", "-016923547559");  // TODO: Why?
   }
 
   @Test

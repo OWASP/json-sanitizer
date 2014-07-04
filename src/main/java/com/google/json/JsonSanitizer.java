@@ -155,7 +155,12 @@ public final class JsonSanitizer {
    */
   private int cleaned;
 
+  private static final boolean SUPER_VERBOSE_AND_SLOW_LOGGING = false;
+
   JsonSanitizer(String jsonish) {
+    if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
+      System.err.println("\n" + jsonish + "\n========");
+    }
     this.jsonish = jsonish != null ? jsonish : "null";
   }
 
@@ -175,6 +180,13 @@ public final class JsonSanitizer {
     for (int i = 0; i < n; ++i) {
       try {
         char ch = jsonish.charAt(i);
+        if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
+          String sanitizedJsonStr =
+            (sanitizedJson == null ? "" : sanitizedJson)
+            + jsonish.substring(cleaned, i);
+          System.err.println("i=" + i + ", ch=" + ch + ", state=" + state
+                             + ", sanitized=" + sanitizedJsonStr);
+        }
         switch (ch) {
           case '\t': case '\n': case '\r': case ' ':
             break;
@@ -383,6 +395,13 @@ public final class JsonSanitizer {
     if (state == State.START_ARRAY && bracketDepth == 0) {
       // No tokens.  Only whitespace
       insert(n, "null");
+      state = State.AFTER_ELEMENT;
+    }
+
+    if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
+      System.err.println(
+          "state=" + state + ", sanitizedJson=" + sanitizedJson
+          + ", cleaned=" + cleaned + ", bracketDepth=" + bracketDepth);
     }
 
     if ((sanitizedJson != null && sanitizedJson.length() != 0)
@@ -396,6 +415,12 @@ public final class JsonSanitizer {
       switch (state) {
         case BEFORE_ELEMENT: case BEFORE_KEY:
           elideTrailingComma(n);
+          break;
+        case AFTER_KEY:
+          sanitizedJson.append(":null");
+          break;
+        case BEFORE_VALUE:
+          sanitizedJson.append("null");
           break;
         default: break;
       }
