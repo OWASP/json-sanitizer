@@ -132,6 +132,8 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("null", "\uffef\u0000\u0008\ud800\uffff\udc00");
     assertSanitized("[null]", "[,]");
     assertSanitized("[null]", "[null,]");
+    assertSanitized("{\"a\":0,\"false\":\"x\",\"\":{\"\":-1}}",
+                    "{\"a\":0,false\"x\":{\"\":-1}}");
   }
 
   @Test

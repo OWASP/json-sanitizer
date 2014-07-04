@@ -566,11 +566,11 @@ public final class JsonSanitizer {
         return State.AFTER_VALUE;
       case AFTER_VALUE:
         if (canBeKey) {
-          insert(pos, ",\"\":");
-          return State.AFTER_VALUE;
-        } else {
           insert(pos, ',');
           return State.AFTER_KEY;
+        } else {
+          insert(pos, ",\"\":");
+          return State.AFTER_VALUE;
         }
       case START_ARRAY: case BEFORE_ELEMENT:
         return State.AFTER_ELEMENT;
