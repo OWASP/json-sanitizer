@@ -9,7 +9,7 @@
     When the version ends with "-SNAPSHOT", then `mvn deploy` moves it to
     the snapshot directory instead of into staging proper.
    -->
-  <version>1.0</version>
+  <version>1.1-SNAPSHOT</version>
   <name>json-sanitizer</name>
   <url>https://code.google.com/p/json-sanitizer</url>
   <description>
