@@ -49,6 +49,11 @@ public final class FuzzyTest extends TestCase {
       }
     }
 
+    // Dump the seed so that failures can be reproduced with only this line
+    // from the test log.
+    System.err.println("Fuzzing with -Dfuzz.seed=" + Long.toHexString(seed));
+    System.err.flush();
+
     Random rnd = new Random(seed);
     for (String fuzzyWuzzyString : new FuzzyStringGenerator(rnd)) {
       try {
@@ -58,8 +63,6 @@ public final class FuzzyTest extends TestCase {
         assertEquals(fuzzyWuzzyString + "  =>  " + sanitized0, sanitized0,
                      sanitized1);
       } catch (Throwable th) {
-        System.err.println(
-            "Fuzzing with -Dfuzz.seed=" + Long.toHexString(seed));
         System.err.println("Failed on `" + fuzzyWuzzyString + "`");
         hexDump(fuzzyWuzzyString.getBytes("UTF16"), System.err);
         System.err.println("");

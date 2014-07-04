@@ -371,6 +371,9 @@ public final class JsonSanitizer {
                 // because a number literal is converted to its string form
                 // before being used as a property name.
                 canonicalizeNumber(i, runEnd);
+                // We intentionally ignore the return value of canonicalize.
+                // Uncanonicalizable numbers just get put straight through as
+                // string values.
               }
               insert(runEnd, '"');
             } else {
@@ -788,8 +791,9 @@ public final class JsonSanitizer {
   /**
    * Converts a run of characters that form a JS number to its canonical form
    * which happens to also be a valid JSON number.
+   * @return true when the number could be canonicalized.
    */
-  private void canonicalizeNumber(int start, int end) {
+  private boolean canonicalizeNumber(int start, int end) {
     elide(start, start);
     int sanStart = sanitizedJson.length();
 
@@ -802,10 +806,15 @@ public final class JsonSanitizer {
     elide(end, end);
     int sanEnd = sanitizedJson.length();
 
-    canonicalizeNumber(sanitizedJson, sanStart, sanEnd);
+    return canonicalizeNumber(sanitizedJson, sanStart, sanEnd);
   }
 
-  private static void canonicalizeNumber(
+  /**
+   * @param sanStart the start (inclusive) of the number on sanitizedJson.
+   * @param sanEnd the end (exclusive) of the number on sanitizedJson.
+   * @return true when the number could be canonicalized.
+   */
+  private static boolean canonicalizeNumber(
       StringBuilder sanitizedJson, int sanStart, int sanEnd) {
     // Now we perform several steps.
     // 1. Convert from scientific notation to regular or vice-versa based on
@@ -848,8 +857,19 @@ public final class JsonSanitizer {
       && fractionEnd   <= expStart
       && expStart      <= expEnd;
 
-    int exp = expEnd == expStart
-        ? 0 : Integer.parseInt(sanitizedJson.substring(expStart, expEnd));
+    int exp;
+    if (expEnd == expStart) {
+      exp = 0;
+    } else {
+      try {
+        exp = Integer.parseInt(sanitizedJson.substring(expStart, expEnd), 10);
+      } catch (NumberFormatException ex) {
+        // The exponent is out of the range of representable ints.
+        // JSON does not place limits on the range of representable numbers but
+        // nor does it allow bare numbers as keys.
+        return false;
+      }
+    }
 
     // Numbered Comments below come from the EcmaScript 5 language specification
     // section 9.8.1 : ToString Applied to the Number Type
@@ -925,7 +945,7 @@ public final class JsonSanitizer {
       // 2. If m is +0 or -0, return the String "0".
       sanitizedJson.setLength(sanStart);  // Elide any sign.
       sanitizedJson.append('0');
-      return;
+      return true;
     }
 
     // 6. If k <= n <= 21, return the String consisting of the k digits of the
@@ -974,6 +994,7 @@ public final class JsonSanitizer {
       sanitizedJson.append('e').append(nLess1 < 0 ? '-' : '+')
           .append(Math.abs(nLess1));
     }
+    return true;
   }
 
   private boolean isKeyword(int start, int end) {

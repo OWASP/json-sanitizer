@@ -138,9 +138,14 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("[\"\\u00a0\\u1234\"]");
     assertSanitized("{\"a\":\"b\",\"c\":null}", "{a\\b\"c");
     assertSanitized("{\"a\":\"b\",\"c\":null}", "{\"a\":\"b\",\"c\":");
-    assertSanitized("1e0001234567890123456789123456789123456789");
-    assertSanitized("1e01");
-    assertSanitized("-2035208041", "-016923547559");  // TODO: Why?
+    assertSanitized(
+        "{\"1e0001234567890123456789123456789123456789\":0}",
+        // Exponent way out of representable range in a JS double.
+        "{1e0001234567890123456789123456789123456789:0}"
+                    );
+    // This is an odd consequence of the way we recode octal literals.
+    // Our octal recoder does not fail on digits '8' or '9'.
+    assertSanitized("-2035208041", "-016923547559");
   }
 
   @Test
