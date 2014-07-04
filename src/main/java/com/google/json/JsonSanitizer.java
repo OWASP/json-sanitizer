@@ -950,7 +950,7 @@ public final class JsonSanitizer {
 
     // 6. If k <= n <= 21, return the String consisting of the k digits of the
     // decimal representation of s (in order, with no leading zeroes),
-    // followed by n-k occurrences of the character Ô0Õ.
+    // followed by n-k occurrences of the character '0'.
     if (k <= n && n <= 21) {
       for (int i = k; i < n; ++i) {
         sanitizedJson.append('0');
