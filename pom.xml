@@ -60,6 +60,15 @@ encoding and make it easier to embed your JSON in HTML and XML.
     </developer>
   </developers>
 
+  <mailingLists>
+    <mailingList>
+      <name>User Support List</name>
+      <subscribe>json-sanitizer-support+subscribe@googlegroups.com</subscribe>
+      <unsubscribe>json-sanitizer-support+unsubscribe@googlegroups.com</unsubscribe>
+      <archive>https://groups.google.com/forum/#!forum/json-sanitizer-support</archive>
+    </mailingList>
+  </mailingLists>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
