@@ -2,6 +2,8 @@
 
 Given JSON-like content, The JSON Sanitizer converts it to valid JSON.
 
+[Getting Started](https://github.com/mikesamuel/json-sanitizer/GettingStarted.md) - [Contact](https://github.com/mikesamuel/json-sanitizer/Contact.md)
+
 This can be attached at either end of a data-pipeline to help satisfy
 Postel's principle:
 
