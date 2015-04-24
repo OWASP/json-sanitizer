@@ -57,7 +57,7 @@ The output satisfies three additional properties:
  * The output will not contain the substring (case-insensitively) `"</script"` so can be embedded inside an HTML script element without further encoding.
  * The output will not contain the substring `"]]>"` so can be embedded inside an XML CDATA section without further encoding.
  * The output is a valid Javascript expression, so can be parsed by Javascript's `eval` builtin (after being wrapped in parentheses) or by `JSON.parse`.  Specifically, the output will not contain any string literals with embedded JS newlines (U+2028 Paragraph separator or U+2029 Line separator).
- * The output contains only valid Unicode [scalar values](http://www.unicode.org/glossary/#unicode_scalar_value) (no isolated [http://www.unicode.org/glossary/#surrogate_pair UTF-16 surrogates]) that are [allowed in XML](http://www.w3.org/TR/xml/#charsets) unescaped.
+ * The output contains only valid Unicode [scalar values](http://www.unicode.org/glossary/#unicode_scalar_value) (no isolated [UTF-16 surrogates](http://www.unicode.org/glossary/#surrogate_pair)) that are [allowed in XML](http://www.w3.org/TR/xml/#charsets) unescaped.
 
 
 ## Security
