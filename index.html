@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>OWASP JSON Sanitizer by mikesamuel</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>OWASP JSON Sanitizer</h1>
+        <p>Given JSON-like content, The JSON Sanitizer converts it to valid JSON.</p>
+
+        <p class="view"><a href="https://github.com/mikesamuel/json-sanitizer">View the Project on GitHub <small>mikesamuel/json-sanitizer</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/mikesamuel/json-sanitizer/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/mikesamuel/json-sanitizer/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/mikesamuel/json-sanitizer">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>Given JSON-like content, The JSON Sanitizer converts it to valid JSON.</p>
+
+<p>This can be attached at either end of a data-pipeline to help satisfy
+Postel's principle:</p>
+
+<blockquote>
+<p>be conservative in what you do, be liberal in what you accept from others</p>
+</blockquote>
+
+<p>Applied to JSON-like content from others, it will produce well-formed JSON
+that should satisfy any parser you use.</p>
+
+<p>Applied to your output before you send, it will coerce minor mistakes in
+encoding and make it easier to embed your JSON in HTML and XML.</p>
+
+<h2>
+<a id="motivation" class="anchor" href="#motivation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Motivation</h2>
+
+<p><img src="http://json-sanitizer.googlecode.com/git/docs/JSON-Sanitizer-Arch.png" alt="Architecture"></p>
+
+<p>Many applications have large amounts of code that uses ad-hoc methods to generate JSON outputs.
+Frequently these outputs all pass through a small amount of framework code before being sent over the network.  This small amount of framework code can use this library to make sure that the ad-hoc outputs are standards compliant and safe to pass to (overly) powerful deserializers like Javascript's <code>eval</code> operator.</p>
+
+<p>Applications also often have web service APIs that receive JSON from a variety of sources.  When this JSON is created using ad-hoc methods, this library can massage it into a form that is easy to parse.</p>
+
+<p>By hooking this library into the code that sends and receives requests and responses, this library can help software architects ensure system-wide security and well-formedness guarantees.</p>
+
+<h2>
+<a id="input" class="anchor" href="#input" aria-hidden="true"><span class="octicon octicon-link"></span></a>Input</h2>
+
+<p>The sanitizer takes JSON like content, and interprets it as JS eval would.
+Specifically, it deals with these non-standard constructs.</p>
+
+<table>
+<thead>
+<tr>
+<th>Construct</th>
+<th>Policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>'...'</code></td>
+<td>Single quoted strings are converted to JSON strings.</td>
+</tr>
+<tr>
+<td><code>\xAB</code></td>
+<td>Hex escapes are converted to JSON unicode escapes.</td>
+</tr>
+<tr>
+<td><code>\012</code></td>
+<td>Octal escapes are converted to JSON unicode escapes.</td>
+</tr>
+<tr>
+<td><code>0xAB</code></td>
+<td>Hex integer literals are converted to JSON decimal numbers.</td>
+</tr>
+<tr>
+<td><code>012</code></td>
+<td>Octal integer literals are converted to JSON decimal numbers.</td>
+</tr>
+<tr>
+<td><code>+.5</code></td>
+<td>Decimal numbers are coerced to JSON's stricter format.</td>
+</tr>
+<tr>
+<td><code>[0,,2]</code></td>
+<td>Elisions in arrays are filled with <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>[1,2,3,]</code></td>
+<td>Trailing commas are removed.</td>
+</tr>
+<tr>
+<td><code>{foo:"bar"}</code></td>
+<td>Unquoted property names are quoted.</td>
+</tr>
+<tr>
+<td><code>//comments</code></td>
+<td>JS style line and block comments are removed.</td>
+</tr>
+<tr>
+<td><code>(...)</code></td>
+<td>Grouping parentheses are removed.</td>
+</tr>
+</tbody>
+</table>
+
+<p>The sanitizer fixes missing punctuation, end quotes, and mismatched or missing close brackets.  If an input contains only white-space then the valid JSON string <code>null</code> is substituted.</p>
+
+<h2>
+<a id="output" class="anchor" href="#output" aria-hidden="true"><span class="octicon octicon-link"></span></a>Output</h2>
+
+<p>The output is well-formed JSON as defined by
+<a href="http://www.ietf.org/rfc/rfc4627.txt">RFC 4627</a>.
+The output satisfies three additional properties:</p>
+
+<ul>
+<li>The output will not contain the substring (case-insensitively) <code>"&lt;/script"</code> so can be embedded inside an HTML script element without further encoding.</li>
+<li>The output will not contain the substring <code>"]]&gt;"</code> so can be embedded inside an XML CDATA section without further encoding.</li>
+<li>The output is a valid Javascript expression, so can be parsed by Javascript's <code>eval</code> builtin (after being wrapped in parentheses) or by <code>JSON.parse</code>.  Specifically, the output will not contain any string literals with embedded JS newlines (U+2028 Paragraph separator or U+2029 Line separator).</li>
+<li>The output contains only valid Unicode <a href="http://www.unicode.org/glossary/#unicode_scalar_value">scalar values</a> (no isolated <a href="http://www.unicode.org/glossary/#surrogate_pair">UTF-16 surrogates</a>) that are <a href="http://www.w3.org/TR/xml/#charsets">allowed in XML</a> unescaped.</li>
+</ul>
+
+<h2>
+<a id="security" class="anchor" href="#security" aria-hidden="true"><span class="octicon octicon-link"></span></a>Security</h2>
+
+<p>Since the output is well-formed JSON, passing it to <code>eval</code> will
+have no side-effects and no free variables, so is neither a code-injection
+vector, nor a vector for exfiltration of secrets.</p>
+
+<p>This library only ensures that the JSON string → Javascript object phase has no side effects and resolves no free variables, and cannot control how other client side code later interprets the resulting Javascript object.  So if client-side code takes a part of the parsed data that is controlled by an attacker and passes it back through a powerful interpreter like <code>eval</code> or <code>innerHTML</code> then that client-side code might suffer unintended side-effects.</p>
+
+<div class="highlight highlight-JavaScript"><pre><span class="pl-k">var</span> myValue <span class="pl-k">=</span> <span class="pl-c1">eval</span>(sanitizedJsonString);  <span class="pl-c">// safe</span>
+<span class="pl-k">var</span> myEmbeddedValue <span class="pl-k">=</span> <span class="pl-c1">eval</span>(myValue.foo);  <span class="pl-c">// possibly unsafe</span></pre></div>
+
+<p>Additionally, sanitizing JSON cannot protect an application from <a href="http://en.wikipedia.org/wiki/Confused_deputy_problem">Confused Deputy attacks</a></p>
+
+<div class="highlight highlight-JavaScript"><pre><span class="pl-k">var</span> myValue <span class="pl-k">=</span> JSON.<span class="pl-c1">parse</span>(sanitizedJsonString);
+addToAdminstratorsGroup(myValue.propertyFromUntrustedSource);</pre></div>
+
+<h1>
+<a id="performance" class="anchor" href="#performance" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance</h1>
+
+<p>The sanitize method will return the input string without allocating a new
+buffer when the input is already valid JSON that satisfies the properties
+above.  Thus, if used on input that is usually well formed, it has minimal
+memory overhead.</p>
+
+<p>The sanitize method takes O(n) time where n is the length of the input
+in UTF-16 code-units.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/mikesamuel">mikesamuel</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
