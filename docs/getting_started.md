@@ -6,7 +6,7 @@ You can fetch the jars from
 [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cjson-sanitizer)
 or you can let your favorite java package manager handle it for you via
 
-```Maven POM
+```Maven
 <dependency>
   <groupId>com.mikesamuel</groupId>
   <artifactId>json-sanitizer</artifactId>
