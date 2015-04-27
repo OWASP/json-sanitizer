@@ -2,7 +2,7 @@
 
 Given JSON-like content, The JSON Sanitizer converts it to valid JSON.
 
-[Getting Started](https://github.com/OWASP/json-sanitizer/docs/getting_started.md) - [Contact](https://github.com/OWASP/json-sanitizer/docs/contact.md)
+[Getting Started](https://github.com/OWASP/json-sanitizer/blob/master/docs/getting_started.md) - [Contact](https://github.com/OWASP/json-sanitizer/blob/master/docs/contact.md)
 
 This can be attached at either end of a data-pipeline to help satisfy
 Postel's principle:
@@ -18,7 +18,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
 
 ## Motivation
 
-![Architecture](http://json-sanitizer.googlecode.com/git/docs/JSON-Sanitizer-Arch.png)
+![Architecture](https://github.com/OWASP/json-sanitizer/blob/master/docs/JSON-Sanitizer-Arch.png)
 
 Many applications have large amounts of code that uses ad-hoc methods
 to generate JSON outputs.
