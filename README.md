@@ -2,7 +2,7 @@
 
 Given JSON-like content, The JSON Sanitizer converts it to valid JSON.
 
-[Getting Started](https://github.com/mikesamuel/json-sanitizer/GettingStarted.md) - [Contact](https://github.com/mikesamuel/json-sanitizer/Contact.md)
+[Getting Started](https://github.com/OWASP/json-sanitizer/docs/getting_started.md) - [Contact](https://github.com/OWASP/json-sanitizer/docs/contact.md)
 
 This can be attached at either end of a data-pipeline to help satisfy
 Postel's principle:
@@ -20,12 +20,22 @@ encoding and make it easier to embed your JSON in HTML and XML.
 
 ![Architecture](http://json-sanitizer.googlecode.com/git/docs/JSON-Sanitizer-Arch.png)
 
-Many applications have large amounts of code that uses ad-hoc methods to generate JSON outputs.
-Frequently these outputs all pass through a small amount of framework code before being sent over the network.  This small amount of framework code can use this library to make sure that the ad-hoc outputs are standards compliant and safe to pass to (overly) powerful deserializers like Javascript's `eval` operator.
+Many applications have large amounts of code that uses ad-hoc methods
+to generate JSON outputs.
 
-Applications also often have web service APIs that receive JSON from a variety of sources.  When this JSON is created using ad-hoc methods, this library can massage it into a form that is easy to parse.
+Frequently these outputs all pass through a small amount of framework
+code before being sent over the network.  This small amount of
+framework code can use this library to make sure that the ad-hoc
+outputs are standards compliant and safe to pass to (overly) powerful
+deserializers like Javascript's `eval` operator.
 
-By hooking this library into the code that sends and receives requests and responses, this library can help software architects ensure system-wide security and well-formedness guarantees.
+Applications also often have web service APIs that receive JSON from a
+variety of sources.  When this JSON is created using ad-hoc methods,
+this library can massage it into a form that is easy to parse.
+
+By hooking this library into the code that sends and receives requests
+and responses, this library can help software architects ensure
+system-wide security and well-formedness guarantees.
 
 
 ## Input
@@ -47,14 +57,16 @@ Specifically, it deals with these non-standard constructs.
 | `//comments`  | JS style line and block comments are removed.                 |
 | `(...)`       | Grouping parentheses are removed.                             |
 
-The sanitizer fixes missing punctuation, end quotes, and mismatched or missing close brackets.  If an input contains only white-space then the valid JSON string `null` is substituted.
+The sanitizer fixes missing punctuation, end quotes, and mismatched or
+missing close brackets.  If an input contains only white-space then
+the valid JSON string `null` is substituted.
 
 
 ## Output
 
 The output is well-formed JSON as defined by
 [RFC 4627](http://www.ietf.org/rfc/rfc4627.txt).
-The output satisfies three additional properties:
+The output satisfies these additional properties:
 
  * The output will not contain the substring (case-insensitively) `"</script"` so can be embedded inside an HTML script element without further encoding.
  * The output will not contain the substring `"]]>"` so can be embedded inside an XML CDATA section without further encoding.
@@ -68,14 +80,21 @@ Since the output is well-formed JSON, passing it to `eval` will
 have no side-effects and no free variables, so is neither a code-injection
 vector, nor a vector for exfiltration of secrets.
 
-This library only ensures that the JSON string → Javascript object phase has no side effects and resolves no free variables, and cannot control how other client side code later interprets the resulting Javascript object.  So if client-side code takes a part of the parsed data that is controlled by an attacker and passes it back through a powerful interpreter like `eval` or `innerHTML` then that client-side code might suffer unintended side-effects.
+This library only ensures that the JSON string → Javascript object
+phase has no side effects and resolves no free variables, and cannot
+control how other client side code later interprets the resulting
+Javascript object.  So if client-side code takes a part of the parsed
+data that is controlled by an attacker and passes it back through a
+powerful interpreter like `eval` or `innerHTML` then that client-side
+code might suffer unintended side-effects.
 
 ```JavaScript
 var myValue = eval(sanitizedJsonString);  // safe
 var myEmbeddedValue = eval(myValue.foo);  // possibly unsafe
 ```
 
-Additionally, sanitizing JSON cannot protect an application from [Confused Deputy attacks](http://en.wikipedia.org/wiki/Confused_deputy_problem)
+Additionally, sanitizing JSON cannot protect an application from
+[Confused Deputy attacks](http://en.wikipedia.org/wiki/Confused_deputy_problem)
 
 ```JavaScript
 var myValue = JSON.parse(sanitizedJsonString);
@@ -91,4 +110,3 @@ memory overhead.
 
 The sanitize method takes O(n) time where n is the length of the input
 in UTF-16 code-units.
-
