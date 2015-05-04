@@ -1,0 +1,28 @@
+1. Run all tests via `mvn clean test`.
+
+2. Run findbugs via `mvn compile site`
+
+   a. check target/site/findbugs.html to see if there are any warnings
+
+3. Run `mvn javadoc:jar` to make sure there are no doc warnings.
+
+4. Make sure all changes are committed and pushed.
+
+5. Check http://central.sonatype.org/pages/apache-maven.html
+         #nexus-staging-maven-plugin-for-deployment-and-release
+   and make sure you have the relevant credentials in your ~/.m2/settings.xml
+
+6. Check http://search.maven.org/#search%7Cga%7C1%7Cjson-sanitizer
+   and pick a release number that does not conflict.
+   (Release numbers used to be based on subversion commit numbers)
+
+7. Modify the <version> in pom.xml to use the chosen release number
+   without the -SNAPSHOT suffix
+
+8. `mvn clean deploy`
+
+9. Check email for the nexus push notifications.
+
+10. Update CHANGE_LOG.html with an entry for the new version.
+
+11. git commit&push pom.xml and CHANGE_LOG.html.

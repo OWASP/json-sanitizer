@@ -10,7 +10,6 @@
    -->
   <version>1.1-SNAPSHOT</version>
   <name>json-sanitizer</name>
-  <url>https://code.google.com/p/json-sanitizer</url>
   <description>
 Given JSON-like content, converts it to valid JSON.
 
@@ -26,6 +25,7 @@ JSON that should satisfy any parser you use.
 Applied to your output before you send, it will coerce minor mistakes in
 encoding and make it easier to embed your JSON in HTML and XML.
   </description>
+  <url>https://github.com/OWASP/json-sanitizer</url>
 
   <licenses>
     <license>
@@ -36,21 +36,106 @@ encoding and make it easier to embed your JSON in HTML and XML.
   </licenses>
 
   <scm>
-    <connection>scm:git:https://code.google.com/p/json-sanitizer/</connection>
-    <developerConnection>scm:git:https://code.google.com/p/json-sanitizer/</developerConnection>
-    <url>https://code.google.com/p/json-sanitizer/</url>
+    <connection>scm:git:git@github.com:OWASP/json-sanitizer.git</connection>
+    <developerConnection>scm:git:git@github.com:OWASP/json-sanitizer.git</developerConnection>
+    <url>https://github.com/OWASP/json-sanitizer</url>
   </scm>
 
-  <!--
-    https://docs.sonatype.org/display/Repository/
-    Sonatype+OSS+Maven+Repository+Usage+Guide
-    #SonatypeOSSMavenRepositoryUsageGuide-7a.1.POMandsettingsconfig
-  -->
-  <parent>
-    <groupId>org.sonatype.oss</groupId>
-    <artifactId>oss-parent</artifactId>
-    <version>7</version>
-  </parent>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.3</version>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+        </configuration>
+      </plugin>
+      <!-- For building the source jar. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- For building the javadoc jar. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9.1</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Sign all the components sent to ossrh
+           The credentials are pulled from ~/.m2/settings.xml -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- http://www.javaworld.com/article/2074515/core-java/
+           unit-test-code-coverage-with-maven-and-jacoco.html -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.5.5.201112152213</version>
+        <configuration>
+          <destFile>${basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
+          <dataFile>${basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
+        </configuration>
+        <executions>
+          <execution>
+            <id>jacoco-initialize</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>jacoco-site</id>
+            <phase>package</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!--plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.3</version>
+        <configuration>
+          <source>1.5</source>
+          <target>1.5</target>
+        </configuration>
+      </plugin-->
+    </plugins>
+  </build>
 
   <developers>
     <developer>
@@ -71,19 +156,19 @@ encoding and make it easier to embed your JSON in HTML and XML.
 
   <dependencies>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>[3.8.1,)</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
       <version>[2.0.1,)</version>
       <scope>compile</scope>
     </dependency>
-  </dependencies>
 
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>[3.8.1,)</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <reporting>
     <plugins>
