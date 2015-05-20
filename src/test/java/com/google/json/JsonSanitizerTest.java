@@ -136,7 +136,7 @@ public final class JsonSanitizerTest extends TestCase {
                     "{\"a\":0,false\"x\":{\"\":-1}}");
     assertSanitized("[true ,false]", "[true false]");
     assertSanitized("[\"\\u00a0\\u1234\"]");
-    assertSanitized("{\"a\":\"b\",\"c\":null}", "{a\\b\"c");
+    assertSanitized("{\"a\\b\":\"c\"}", "{a\\b\"c");
     assertSanitized("{\"a\":\"b\",\"c\":null}", "{\"a\":\"b\",\"c\":");
     assertSanitized(
         "{\"1e0001234567890123456789123456789123456789\":0}",
@@ -153,6 +153,20 @@ public final class JsonSanitizerTest extends TestCase {
     // These triggered index out of bounds and assertion errors.
     assertSanitized("[{\"\":{}}]", "[{{},\u00E4");
     assertSanitized("[{\"\":{}}]", "[{{\u00E4\u00E4},\u00E4");
+  }
+
+  @Test
+  public final void testIssue4() {
+    // Make sure that bare words are quoted.
+    assertSanitized("\"dev\"", "dev");
+    assertSanitized("\"eval\"", "eval");
+    assertSanitized("\"comment\"", "comment");
+    assertSanitized("\"fasle\"", "fasle");
+    assertSanitized("\"FALSE\"", "FALSE");
+    assertSanitized("\"dev/comment\"", "dev/comment");
+    assertSanitized("\"devcomment\"", "dev\\comment");
+    assertSanitized("\"dev\\ncomment\"", "dev\\ncomment");
+    assertSanitized("[\"dev\", \"comment\"]", "[dev\\, comment]");
   }
 
 }

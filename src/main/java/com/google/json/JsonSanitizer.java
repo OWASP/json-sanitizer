@@ -358,6 +358,21 @@ public final class JsonSanitizer {
 
             boolean isNumber = ('0' <= ch && ch <= '9')
                || ch == '.' || ch == '+' || ch == '-';
+            boolean isKeyword = !isNumber && isKeyword(i, runEnd);
+
+            if (!(isNumber || isKeyword)) {
+              // We're going to have to quote the output.  Further expand to
+              // include more of an unquoted token in a string.
+              for (; runEnd < n; ++runEnd) {
+                if (isJsonSpecialChar(runEnd)) {
+                  break;
+                }
+              }
+              if (runEnd < n && jsonish.charAt(runEnd) == '"') {
+                ++runEnd;
+              }
+            }
+
             if (state == State.AFTER_KEY) {
               // We need to quote whatever we have since it is used as a
               // property name in a map and only quoted strings can be used that
@@ -374,17 +389,19 @@ public final class JsonSanitizer {
                 // We intentionally ignore the return value of canonicalize.
                 // Uncanonicalizable numbers just get put straight through as
                 // string values.
+                insert(runEnd, '"');
+              } else {
+                sanitizeString(i, runEnd);
               }
-              insert(runEnd, '"');
             } else {
               if (isNumber) {
                 // Convert hex and octal constants to decimal and ensure that
                 // integer and fraction portions are not empty.
                 normalizeNumber(i, runEnd);
-              } else if (!isKeyword(i, runEnd)) {
+              } else if (!isKeyword) {
                 // Treat as an unquoted string literal.
                 insert(i, '"');
-                insert(runEnd, '"');
+                sanitizeString(i, runEnd);
               }
             }
             i = runEnd - 1;
@@ -467,11 +484,21 @@ public final class JsonSanitizer {
         case '"': case '\'':
           if (i == start) {
             if (ch == '\'') { replace(i, i + 1, '"'); }
-          } else if (i + 1 == end && ch == jsonish.charAt(start)) {
-            if (ch == '\'') { replace(i, i + 1, '"'); }
-            closed = true;
-          } else if (ch == '"') {
-            insert(i, '\\');
+          } else {
+            if (i + 1 == end) {
+              char startDelim = jsonish.charAt(start);
+              if (startDelim != '\'') {
+                // If we're sanitizing a string whose start was inferred, then
+                // treat '"' as closing regardless.
+                startDelim = '"';
+              }
+              closed = startDelim == ch;
+            }
+            if (closed) {
+              if (ch == '\'') { replace(i, i + 1, '"'); }
+            } else if (ch == '"') {
+              insert(i, '\\');
+            }
           }
           break;
         // Embedding.  Disallow </script and ]]> in string literals so that
@@ -1018,6 +1045,20 @@ public final class JsonSanitizer {
     if ('0' <= ch && ch <= '9') { return true; }
     ch |= 32;
     return 'a' <= ch && ch <= 'f';
+  }
+
+  private boolean isJsonSpecialChar(int i) {
+    char ch = jsonish.charAt(i);
+    if (ch <= ' ') { return true; }
+    switch (ch) {
+      case '"':
+      case ',': case ':':
+      case '[': case ']':
+      case '{': case '}':
+        return true;
+      default:
+        return false;
+    }
   }
 
   private void appendHex(int x, int nDigits) {
