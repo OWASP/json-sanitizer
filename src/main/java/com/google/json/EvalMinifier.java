@@ -30,6 +30,7 @@ import javax.annotation.Nullable;
  * {@code eval} builtin, tries to reduce the number of bytes sent over
  * the wire by turning it into a Javascript expression that pools constants.
  */
+@SuppressWarnings("synthetic-access")
 public final class EvalMinifier {
 
   /**

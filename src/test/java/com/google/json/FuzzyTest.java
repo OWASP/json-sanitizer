@@ -31,6 +31,7 @@ import org.junit.Test;
  * Tries a series of pseudo-random variants of a string of JSON to suss out
  * boundary conditions in the JSON parser.
  */
+@SuppressWarnings({ "javadoc", "static-method" })
 public final class FuzzyTest extends TestCase {
   @Test
   public final void testSanitizerLikesFuzzyWuzzyInputs() throws Throwable {
@@ -116,6 +117,7 @@ final class FuzzyStringGenerator implements Iterable<String> {
       public void remove() {
         throw new UnsupportedOperationException();
       }
+      @SuppressWarnings("synthetic-access")
       private void fuzz() {
         if (basis == null) {
           pending = basis = makeRandomJson();

@@ -91,6 +91,13 @@ package com.google.json;
  * code-units.
  */
 public final class JsonSanitizer {
+  /**
+   * Given JSON-like content, produces a string of JSON that is safe to embed,
+   * safe to pass to JavaScript's {@code eval} operator.
+   *
+   * @param jsonish JSON-like content.
+   * @return embeddable JSON
+   */
   public static String sanitize(String jsonish) {
     JsonSanitizer s = new JsonSanitizer(jsonish);
     s.sanitize();
@@ -406,7 +413,7 @@ public final class JsonSanitizer {
             }
             i = runEnd - 1;
         }
-      } catch (UnbracketedComma _) {
+      } catch (@SuppressWarnings("unused") UnbracketedComma e) {
         elide(i, jsonish.length());
         break;
       }
@@ -890,7 +897,7 @@ public final class JsonSanitizer {
     } else {
       try {
         exp = Integer.parseInt(sanitizedJson.substring(expStart, expEnd), 10);
-      } catch (NumberFormatException ex) {
+      } catch (@SuppressWarnings("unused") NumberFormatException ex) {
         // The exponent is out of the range of representable ints.
         // JSON does not place limits on the range of representable numbers but
         // nor does it allow bare numbers as keys.
@@ -1061,8 +1068,8 @@ public final class JsonSanitizer {
     }
   }
 
-  private void appendHex(int x, int nDigits) {
-    for (int i = 0; i < nDigits; ++i, x >>>= 4) {
+  private void appendHex(int n, int nDigits) {
+    for (int i = 0, x = n; i < nDigits; ++i, x >>>= 4) {
       int dig = x & 0xf;
       sanitizedJson.append(dig + (dig < 10 ? '0' : (char) ('a' - 10)));
     }
@@ -1070,6 +1077,7 @@ public final class JsonSanitizer {
 
   /** Indicates that a comma was seen at the top level. */
   private static final class UnbracketedComma extends Exception {
+    private static final long serialVersionUID = 783239978717247850L;
     // No members.  Used for nominal type.
   }
 
@@ -1085,6 +1093,7 @@ public final class JsonSanitizer {
    * An exception instance that can be thrown without the cost of unwinding the
    * stack.
    */
+  @SuppressWarnings("synthetic-access")
   private static final UnbracketedComma UNBRACKETED_COMMA
     = new UnbracketedComma();
   static {

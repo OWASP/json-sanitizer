@@ -104,7 +104,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.5.5.201112152213</version>
+        <version>0.7.5.201505241946</version>
         <configuration>
           <destFile>${basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
           <dataFile>${basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
@@ -125,7 +125,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
           </execution>
         </executions>
       </plugin>
-      <!--plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.3</version>
@@ -133,7 +133,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
           <source>1.5</source>
           <target>1.5</target>
         </configuration>
-      </plugin-->
+      </plugin>
     </plugins>
   </build>
 

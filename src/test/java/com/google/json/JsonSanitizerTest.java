@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import junit.framework.TestCase;
 
+@SuppressWarnings({ "javadoc", "static-method" })
 public final class JsonSanitizerTest extends TestCase {
 
   private static void assertSanitized(String golden, String input) {
@@ -168,5 +169,4 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("\"dev\\ncomment\"", "dev\\ncomment");
     assertSanitized("[\"dev\", \"comment\"]", "[dev\\, comment]");
   }
-
 }
