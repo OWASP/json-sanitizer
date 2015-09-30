@@ -8,7 +8,7 @@
     When the version ends with "-SNAPSHOT", then `mvn deploy` moves it to
     the snapshot directory instead of into staging proper.
    -->
-  <version>1.1-SNAPSHOT</version>
+  <version>1.1</version>
   <name>json-sanitizer</name>
   <description>
 Given JSON-like content, converts it to valid JSON.
@@ -36,10 +36,21 @@ encoding and make it easier to embed your JSON in HTML and XML.
   </licenses>
 
   <scm>
-    <connection>scm:git:git@github.com:OWASP/json-sanitizer.git</connection>
-    <developerConnection>scm:git:git@github.com:OWASP/json-sanitizer.git</developerConnection>
+    <connection>scm:git:git://github.com/OWASP/json-sanitizer.git</connection>
+    <developerConnection>scm:git:git://github.com/OWASP/json-sanitizer.git</developerConnection>
     <url>https://github.com/OWASP/json-sanitizer</url>
   </scm>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
 
   <build>
     <plugins>
@@ -173,12 +184,11 @@ encoding and make it easier to embed your JSON in HTML and XML.
   <reporting>
     <plugins>
       <!-- `mvn compile site` will generate target/site/findbugs.html -->
-      <!-- http://mojo.codehaus.org/findbugs-maven-plugin/usage.html -->
-      <!-- http://www.petrikainulainen.net/programming/maven/findbugs-maven-plugin-tutorial/ -->
+      <!-- http://gleclaire.github.io/findbugs-maven-plugin/dependency-info.html -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>findbugs-maven-plugin</artifactId>
-        <version>2.5.2</version>
+        <version>3.0.2</version>
         <configuration>
           <!--
             Enables analysis which takes more memory but finds more bugs.
