@@ -63,6 +63,22 @@ encoding and make it easier to embed your JSON in HTML and XML.
           <serverId>ossrh</serverId>
           <nexusUrl>https://oss.sonatype.org/</nexusUrl>
           <autoReleaseAfterClose>true</autoReleaseAfterClose>
+          <!-- This staging profile ID gleaned by logging in to
+               oss.sonatype.org, clicking "Staging Profiles" on the left,
+               selecting "com.mikesamuel", and extracting the most hexy
+               looking bit from the URL which looks like
+               https://oss.sonatype.org/#stagingProfiles;5fd62edf6679f6
+          -->
+          <stagingProfileId>5fd62edf6679f6</stagingProfileId>
+          <executions>
+            <execution>
+              <id>default-deploy</id>
+              <phase>deploy</phase>
+              <goals>
+                <goal>deploy</goal>
+              </goals>
+            </execution>
+          </executions>
         </configuration>
       </plugin>
       <!-- For building the source jar. -->
