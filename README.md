@@ -1,4 +1,4 @@
-# json-sanitizer
+# json-sanitizer [<img src="https://travis-ci.org/OWASP/java-html-sanitizer.svg">](https://travis-ci.org/OWASP/java-html-sanitizer)
 
 Given JSON-like content, The JSON Sanitizer converts it to valid JSON.
 
