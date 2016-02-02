@@ -1,6 +1,7 @@
 language: java
+sudo: false
 jdk:
   - openjdk6
   - oraclejdk8
 install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dgpg.skip=true -B -q
-script: echo $TRAVIS_JDK_VERSION; mvn verify -Dgpg.skip=true -B -q $(echo $TRAVIS_JDK_VERSION | grep -q 1.8 || echo -- -Dmaven.javadoc.skip=true)
+script: "echo -- TRAVIS_JDK_VERSION=$TRAVIS_JDK_VERSION; mvn verify -Dgpg.skip=true -B -q $(echo $TRAVIS_JDK_VERSION | grep -q 1.8 || echo -- -Dmaven.javadoc.skip=true)"
