@@ -2,5 +2,5 @@ language: java
 jdk:
   - openjdk6
   - oraclejdk7
-install: mvn install -DskipTests=true -Dgpg.skip=true -q
+install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dgpg.skip=true -B -q
 script: mvn verify -Dgpg.skip=true -B -q
