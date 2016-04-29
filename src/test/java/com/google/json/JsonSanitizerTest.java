@@ -14,15 +14,22 @@
 
 package com.google.json;
 
-import org.junit.Test;
-
+import static com.google.json.JsonSanitizer.DEFAULT_NESTING_DEPTH;
+import static com.google.json.JsonSanitizer.sanitize;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import junit.framework.TestCase;
+import org.junit.Test;
 
 @SuppressWarnings({ "javadoc", "static-method" })
 public final class JsonSanitizerTest extends TestCase {
 
   private static void assertSanitized(String golden, String input) {
-    String actual = JsonSanitizer.sanitize(input);
+    assertSanitized(golden, input, DEFAULT_NESTING_DEPTH);
+  }
+
+  private static void assertSanitized(String golden, String input, int maximumNestingDepth) {
+    String actual = sanitize(input, maximumNestingDepth);
     assertEquals(input, golden, actual);
     if (actual.equals(input)) {
       assertSame(input, input, actual);
@@ -168,5 +175,27 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("\"devcomment\"", "dev\\comment");
     assertSanitized("\"dev\\ncomment\"", "dev\\ncomment");
     assertSanitized("[\"dev\", \"comment\"]", "[dev\\, comment]");
+  }
+
+  @Test
+  public final void testMaximumNestingLevel() {
+    String nestedMaps = "{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}";
+    String sanitizedNestedMaps = "{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}";
+
+    boolean exceptionIfTooMuchNesting = false;
+    try {
+      assertSanitized(sanitizedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH);
+    } catch (ArrayIndexOutOfBoundsException e) {
+      Logger.getAnonymousLogger().log(Level.FINEST, "Expected exception in testing maximum nesting level", e);
+      exceptionIfTooMuchNesting = true;
+    }
+    assertTrue("Expecting failure for too nested JSON", exceptionIfTooMuchNesting);
+    assertSanitized(sanitizedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH + 1);
+  }
+
+  @Test
+  public final void testMaximumNestingLevelAssignment() {
+    assertEquals(1, new JsonSanitizer("", Integer.MIN_VALUE).getMaximumNestingDepth());
+    assertEquals(JsonSanitizer.MAXIMUM_NESTING_DEPTH, new JsonSanitizer("", Integer.MAX_VALUE).getMaximumNestingDepth());
   }
 }

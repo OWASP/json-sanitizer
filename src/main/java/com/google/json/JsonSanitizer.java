@@ -91,6 +91,13 @@ package com.google.json;
  * code-units.
  */
 public final class JsonSanitizer {
+
+  /** The default for {@link JsonSanitizer#maximumNestingDepth}. */
+  public static final int DEFAULT_NESTING_DEPTH = 64;
+
+  /** The maximum value for {@link JsonSanitizer#maximumNestingDepth}. */
+  public static final int MAXIMUM_NESTING_DEPTH = 4096;
+
   /**
    * Given JSON-like content, produces a string of JSON that is safe to embed,
    * safe to pass to JavaScript's {@code eval} operator.
@@ -99,7 +106,17 @@ public final class JsonSanitizer {
    * @return embeddable JSON
    */
   public static String sanitize(String jsonish) {
-    JsonSanitizer s = new JsonSanitizer(jsonish);
+    return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(String)}, but allows to set a custom maximum nesting depth.
+   *
+   * @param jsonish JSON-like content.
+   * @return embeddable JSON
+   */
+  public static String sanitize(String jsonish, int maximumNestingDepth) {
+    JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
     s.sanitize();
     return s.toString();
   }
@@ -137,6 +154,11 @@ public final class JsonSanitizer {
     ;
   }
 
+  /**
+   * The maximum nesting depth. According to RFC4627 it is implementation-specific.
+   */
+  private final int maximumNestingDepth;
+
   private final String jsonish;
 
   /**
@@ -165,10 +187,19 @@ public final class JsonSanitizer {
   private static final boolean SUPER_VERBOSE_AND_SLOW_LOGGING = false;
 
   JsonSanitizer(String jsonish) {
+    this(jsonish, DEFAULT_NESTING_DEPTH);
+  }
+
+  JsonSanitizer(String jsonish, int maximumNestingDepth) {
+    this.maximumNestingDepth = Math.min(Math.max(1, maximumNestingDepth),MAXIMUM_NESTING_DEPTH);
     if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
       System.err.println("\n" + jsonish + "\n========");
     }
     this.jsonish = jsonish != null ? jsonish : "null";
+  }
+
+  int getMaximumNestingDepth() {
+    return this.maximumNestingDepth;
   }
 
   void sanitize() {
@@ -217,7 +248,7 @@ public final class JsonSanitizer {
           case '{': case '[':
             state = requireValueState(i, state, false);
             if (isMap == null) {
-              isMap = new boolean[64];
+              isMap = new boolean[maximumNestingDepth];
             }
             boolean map = ch == '{';
             isMap[bracketDepth] = map;

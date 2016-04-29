@@ -54,6 +54,19 @@ public final class EvalMinifier {
     return minify(s.toCharSequence()).toString();
   }
 
+  /**
+   * Same as {@link EvalMinifier#minify(String)}, but allows to set custom maximum nesting depth.
+   * @param jsonish a string of JSON-like content as defined by
+   * {@link JsonSanitizer}.
+   * @param maximumNestingDepth the maximum nesting depth for the {@link JsonSanitizer}
+   * @return see {@link EvalMinifier#minify(String)}
+   */
+  public static String minify(String jsonish, int maximumNestingDepth) {
+    JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
+    s.sanitize();
+    return minify(s.toCharSequence()).toString();
+  }
+
   private static CharSequence minify(CharSequence json) {
     Map<Token, Token> pool = new HashMap<Token, Token>();
     int n = json.length();
