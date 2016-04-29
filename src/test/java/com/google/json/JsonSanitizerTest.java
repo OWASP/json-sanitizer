@@ -192,4 +192,10 @@ public final class JsonSanitizerTest extends TestCase {
     assertTrue("Expecting failure for too nested JSON", exceptionIfTooMuchNesting);
     assertSanitized(sanitizedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH + 1);
   }
+
+  @Test
+  public final void testMaximumNestingLevelAssignment() {
+    assertEquals(1, new JsonSanitizer("", Integer.MIN_VALUE).getMaximumNestingDepth());
+    assertEquals(JsonSanitizer.MAXIMUM_NESTING_DEPTH, new JsonSanitizer("", Integer.MAX_VALUE).getMaximumNestingDepth());
+  }
 }

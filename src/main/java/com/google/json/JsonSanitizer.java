@@ -92,13 +92,11 @@ package com.google.json;
  */
 public final class JsonSanitizer {
 
-  /** The default for {@link JsonSanitizer#maximumNestingDepth} */
+  /** The default for {@link JsonSanitizer#maximumNestingDepth}. */
   public static final int DEFAULT_NESTING_DEPTH = 64;
 
-  /**
-   * The maximum nesting depth. According to RFC4627 it is implementation-specific.
-   */
-  private final int maximumNestingDepth;
+  /** The maximum value for {@link JsonSanitizer#maximumNestingDepth}. */
+  public static final int MAXIMUM_NESTING_DEPTH = 4096;
 
   /**
    * Given JSON-like content, produces a string of JSON that is safe to embed,
@@ -156,6 +154,11 @@ public final class JsonSanitizer {
     ;
   }
 
+  /**
+   * The maximum nesting depth. According to RFC4627 it is implementation-specific.
+   */
+  private final int maximumNestingDepth;
+
   private final String jsonish;
 
   /**
@@ -188,11 +191,15 @@ public final class JsonSanitizer {
   }
 
   JsonSanitizer(String jsonish, int maximumNestingDepth) {
-    this.maximumNestingDepth = Math.max(1, maximumNestingDepth);
+    this.maximumNestingDepth = Math.min(Math.max(1, maximumNestingDepth),MAXIMUM_NESTING_DEPTH);
     if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
       System.err.println("\n" + jsonish + "\n========");
     }
     this.jsonish = jsonish != null ? jsonish : "null";
+  }
+
+  int getMaximumNestingDepth() {
+    return this.maximumNestingDepth;
   }
 
   void sanitize() {
