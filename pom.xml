@@ -215,9 +215,9 @@ encoding and make it easier to embed your JSON in HTML and XML.
       <!-- `mvn compile site` will generate target/site/findbugs.html -->
       <!-- http://gleclaire.github.io/findbugs-maven-plugin/dependency-info.html -->
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>findbugs-maven-plugin</artifactId>
-        <version>3.0.3</version>
+        <groupId>com.github.hazendaz.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>3.0.6</version>
         <configuration>
           <!--
             Enables analysis which takes more memory but finds more bugs.
