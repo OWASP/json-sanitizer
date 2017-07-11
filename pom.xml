@@ -125,9 +125,6 @@ encoding and make it easier to embed your JSON in HTML and XML.
           <nohelp>true</nohelp>
           <show>public</show>
           <doctitle>JSON Sanitizer</doctitle>
-          <!-- The Javadoc that ships with JDK 8 is spammy.
-               http://docs.oracle.com/javase/8/docs/technotes/tools/unix/javadoc.html#BEJEFABE -->
-          <additionalparam>-Xdoclint:-missing</additionalparam>
         </configuration>
       </plugin>
       <!-- Sign all the components sent to ossrh

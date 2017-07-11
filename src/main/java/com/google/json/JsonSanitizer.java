@@ -113,6 +113,7 @@ public final class JsonSanitizer {
    * Same as {@link JsonSanitizer#sanitize(String)}, but allows to set a custom maximum nesting depth.
    *
    * @param jsonish JSON-like content.
+   * @param maximumNestingDepth maximum nesting depth.
    * @return embeddable JSON
    */
   public static String sanitize(String jsonish, int maximumNestingDepth) {
