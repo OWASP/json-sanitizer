@@ -80,6 +80,12 @@ encoding and make it easier to embed your JSON in HTML and XML.
           <artifactId>maven-site-plugin</artifactId>
           <version>3.6</version>
         </plugin>
+        <!-- Support running through sonar -->
+        <plugin>
+          <groupId>org.sonarsource.scanner.maven</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>3.3.0.603</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
