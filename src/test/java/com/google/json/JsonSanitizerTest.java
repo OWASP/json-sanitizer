@@ -21,7 +21,6 @@ import java.util.logging.Logger;
 import junit.framework.TestCase;
 import org.junit.Test;
 
-@SuppressWarnings({ "javadoc", "static-method" })
 public final class JsonSanitizerTest extends TestCase {
 
   private static void assertSanitized(String golden, String input) {
