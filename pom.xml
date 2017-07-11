@@ -124,7 +124,6 @@ encoding and make it easier to embed your JSON in HTML and XML.
         <configuration>
           <nohelp>true</nohelp>
           <show>public</show>
-          <charset>UTF-8</charset>
           <doctitle>JSON Sanitizer</doctitle>
           <!-- The Javadoc that ships with JDK 8 is spammy.
                http://docs.oracle.com/javase/8/docs/technotes/tools/unix/javadoc.html#BEJEFABE -->
@@ -236,6 +235,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
     <maven.compiler.source>1.5</maven.compiler.source>
     <maven.compiler.target>1.5</maven.compiler.target>
 
+    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
