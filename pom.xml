@@ -66,6 +66,23 @@ encoding and make it easier to embed your JSON in HTML and XML.
   </organization>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <!-- Maven doesn't provide by it's hidden super pom a version, so enforce here -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-project-info-reports-plugin</artifactId>
+          <version>2.9</version>
+        </plugin>
+        <!-- Latest fluido needs 3.6+ -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>3.6</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
     <plugins>
       <plugin>
         <groupId>org.sonatype.plugins</groupId>
