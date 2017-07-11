@@ -1,2 +1,13 @@
+# Eclipse 
+.classpath
+.settings
+.project
+.tern-project
 target
-bin
+
+# Intellij
+.idea
+.iml
+
+# sonarqube
+.sonar_lock
