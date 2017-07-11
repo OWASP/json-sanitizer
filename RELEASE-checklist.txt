@@ -16,16 +16,16 @@
    and make sure that the current POM release number is max.
 
 7. Check that it builds clean and the reports are ok.
-   $ mvn3 clean release:clean package site
+   $ mvn clean release:clean package site
    Browse to file://$PWD/target/site and check the findbugs and jacoco reports.
 
 8. Prepare a release which will check that the release plugin can
    do its job and sanity check by running unit-tests.
-   $ mvn3 release:prepare
+   $ mvn release:prepare
 
 9. Perform the release which creates a commit in github for the release
    and updates master to the new development snapshot version.
-   $ mvn3 release:perform
+   $ mvn release:perform
 
 10. Checkout the release branch being sure to use the appropriate release
     version tag.
@@ -36,7 +36,7 @@
    $ cd json-sanitizer-release
 
 11. Deploy to nexus
-   $ mvn3 deploy
+   $ mvn deploy
 
 12. Log in to https://oss.sonatype.org/ then close and release.
   a. Click "Staging Repositories" in the left hand bar.
