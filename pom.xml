@@ -155,8 +155,8 @@ encoding and make it easier to embed your JSON in HTML and XML.
         <artifactId>jacoco-maven-plugin</artifactId>
         <version>0.7.9</version>
         <configuration>
-          <destFile>${basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
-          <dataFile>${basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
+          <destFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
+          <dataFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
         </configuration>
         <executions>
           <execution>
