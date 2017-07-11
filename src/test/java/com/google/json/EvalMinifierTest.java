@@ -20,7 +20,6 @@ import org.junit.Test;
 
 import com.google.json.EvalMinifier.NameGenerator;
 
-@SuppressWarnings({ "javadoc", "static-method" })
 public final class EvalMinifierTest extends TestCase {
 
   private void assertMinified(String golden, String input) {

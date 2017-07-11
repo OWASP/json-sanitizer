@@ -1,9 +1,8 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  
   <modelVersion>4.0.0</modelVersion>
-  <prerequisites>
-    <maven>3.0.4</maven>
-  </prerequisites>
-
+  
   <groupId>com.mikesamuel</groupId>
   <artifactId>json-sanitizer</artifactId>
   <packaging>jar</packaging>
@@ -67,11 +66,34 @@ encoding and make it easier to embed your JSON in HTML and XML.
   </organization>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <!-- Maven doesn't provide by it's hidden super pom a version, so enforce here -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-project-info-reports-plugin</artifactId>
+          <version>2.9</version>
+        </plugin>
+        <!-- Latest fluido needs 3.6+ -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>3.6</version>
+        </plugin>
+        <!-- Support running through sonar -->
+        <plugin>
+          <groupId>org.sonarsource.scanner.maven</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>3.3.0.603</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
     <plugins>
       <plugin>
         <groupId>org.sonatype.plugins</groupId>
         <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.6</version>
+        <version>1.6.8</version>
         <extensions>true</extensions>
         <configuration>
           <serverId>ossrh</serverId>
@@ -99,7 +121,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-        <version>2.4</version>
+        <version>3.0.1</version>
         <executions>
           <execution>
             <id>attach-sources</id>
@@ -113,7 +135,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.10.3</version>
+        <version>2.10.4</version>
         <executions>
           <execution>
             <id>attach-javadocs</id>
@@ -125,11 +147,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
         <configuration>
           <nohelp>true</nohelp>
           <show>public</show>
-          <charset>UTF-8</charset>
           <doctitle>JSON Sanitizer</doctitle>
-          <!-- The Javadoc that ships with JDK 8 is spammy.
-               http://docs.oracle.com/javase/8/docs/technotes/tools/unix/javadoc.html#BEJEFABE -->
-          <additionalparam>-Xdoclint:-missing</additionalparam>
         </configuration>
       </plugin>
       <!-- Sign all the components sent to ossrh
@@ -154,10 +172,10 @@ encoding and make it easier to embed your JSON in HTML and XML.
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.7.5.201505241946</version>
+        <version>0.7.9</version>
         <configuration>
-          <destFile>${basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
-          <dataFile>${basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
+          <destFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</destFile>
+          <dataFile>${project.basedir}/target/coverage-reports/jacoco-unit.exec</dataFile>
         </configuration>
         <executions>
           <execution>
@@ -174,15 +192,6 @@ encoding and make it easier to embed your JSON in HTML and XML.
             </goals>
           </execution>
         </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.5</version>
-        <configuration>
-          <source>1.5</source>
-          <target>1.5</target>
-        </configuration>
       </plugin>
     </plugins>
   </build>
@@ -208,7 +217,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
-      <version>[2.0.1,)</version>
+      <version>3.0.2</version>
       <scope>provided</scope>
     </dependency>
 
@@ -225,9 +234,9 @@ encoding and make it easier to embed your JSON in HTML and XML.
       <!-- `mvn compile site` will generate target/site/findbugs.html -->
       <!-- http://gleclaire.github.io/findbugs-maven-plugin/dependency-info.html -->
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>findbugs-maven-plugin</artifactId>
-        <version>3.0.3</version>
+        <groupId>com.github.hazendaz.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>3.0.6</version>
         <configuration>
           <!--
             Enables analysis which takes more memory but finds more bugs.
@@ -243,6 +252,10 @@ encoding and make it easier to embed your JSON in HTML and XML.
   </reporting>
 
   <properties>
+    <maven.compiler.source>1.6</maven.compiler.source>
+    <maven.compiler.target>1.6</maven.compiler.target>
+
+    <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
