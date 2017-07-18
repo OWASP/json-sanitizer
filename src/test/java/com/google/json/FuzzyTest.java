@@ -31,9 +31,11 @@ import org.junit.Test;
  * Tries a series of pseudo-random variants of a string of JSON to suss out
  * boundary conditions in the JSON parser.
  */
+@SuppressWarnings("javadoc")
 public final class FuzzyTest extends TestCase {
   @Test
-  public final void testSanitizerLikesFuzzyWuzzyInputs() throws Throwable {
+  public static final void testSanitizerLikesFuzzyWuzzyInputs()
+  throws Throwable {
     int nRuns = 1000;
     long seed;
     {

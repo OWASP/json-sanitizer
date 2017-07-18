@@ -20,15 +20,16 @@ import org.junit.Test;
 
 import com.google.json.EvalMinifier.NameGenerator;
 
+@SuppressWarnings("javadoc")
 public final class EvalMinifierTest extends TestCase {
 
-  private void assertMinified(String golden, String input) {
+  private static void assertMinified(String golden, String input) {
     String actual = EvalMinifier.minify(input);
     assertEquals(input, golden, actual);
   }
 
   @Test
-  public final void testMinify() {
+  public static final void testMinify() {
     assertMinified("null", "null");
     assertMinified("[null,null]", "[null,null]");
     assertMinified("[null,null,null,null]", "[null,null,null,null]");
@@ -68,7 +69,7 @@ public final class EvalMinifierTest extends TestCase {
   }
 
   @Test
-  public final void testNameGenerator() {
+  public static final void testNameGenerator() {
     NameGenerator ng = new NameGenerator();
     assertEquals("a", ng.next());
     assertEquals("b", ng.next());

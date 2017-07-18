@@ -92,10 +92,10 @@ package com.google.json;
  */
 public final class JsonSanitizer {
 
-  /** The default for {@link JsonSanitizer#maximumNestingDepth}. */
+  /** The default for the maximumNestingDepth constructor parameter. */
   public static final int DEFAULT_NESTING_DEPTH = 64;
 
-  /** The maximum value for {@link JsonSanitizer#maximumNestingDepth}. */
+  /** The maximum value for the maximumNestingDepth constructor parameter. */
   public static final int MAXIMUM_NESTING_DEPTH = 4096;
 
   /**
@@ -110,7 +110,8 @@ public final class JsonSanitizer {
   }
 
   /**
-   * Same as {@link JsonSanitizer#sanitize(String)}, but allows to set a custom maximum nesting depth.
+   * Same as {@link JsonSanitizer#sanitize(String)}, but allows to set a custom
+   * maximum nesting depth.
    *
    * @param jsonish JSON-like content.
    * @param maximumNestingDepth maximum nesting depth.

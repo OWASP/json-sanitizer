@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 import junit.framework.TestCase;
 import org.junit.Test;
 
+@SuppressWarnings("javadoc")
 public final class JsonSanitizerTest extends TestCase {
 
   private static void assertSanitized(String golden, String input) {
@@ -40,7 +41,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public final void testSanitize() {
+  public static final void testSanitize() {
     // On the left is the sanitized output, and on the right the input.
     // If there is a single string, then the input is fine as-is.
     assertSanitized("null", null);
@@ -156,14 +157,14 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public final void testIssue3() {
+  public static final void testIssue3() {
     // These triggered index out of bounds and assertion errors.
     assertSanitized("[{\"\":{}}]", "[{{},\u00E4");
     assertSanitized("[{\"\":{}}]", "[{{\u00E4\u00E4},\u00E4");
   }
 
   @Test
-  public final void testIssue4() {
+  public static final void testIssue4() {
     // Make sure that bare words are quoted.
     assertSanitized("\"dev\"", "dev");
     assertSanitized("\"eval\"", "eval");
@@ -177,7 +178,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public final void testMaximumNestingLevel() {
+  public static final void testMaximumNestingLevel() {
     String nestedMaps = "{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}";
     String sanitizedNestedMaps = "{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}";
 
@@ -193,7 +194,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public final void testMaximumNestingLevelAssignment() {
+  public static final void testMaximumNestingLevelAssignment() {
     assertEquals(1, new JsonSanitizer("", Integer.MIN_VALUE).getMaximumNestingDepth());
     assertEquals(JsonSanitizer.MAXIMUM_NESTING_DEPTH, new JsonSanitizer("", Integer.MAX_VALUE).getMaximumNestingDepth());
   }

@@ -66,6 +66,7 @@ public final class EvalMinifier {
     return minify(s.toCharSequence()).toString();
   }
 
+  @SuppressWarnings("synthetic-access")
   private static CharSequence minify(CharSequence json) {
     Map<Token, Token> pool = new HashMap<Token, Token>();
     int n = json.length();
@@ -270,7 +271,7 @@ public final class EvalMinifier {
     }
   }
 
-  private static boolean regionMatches(
+  static boolean regionMatches(
       CharSequence a, int as, int ae, CharSequence b, int bs, int be) {
     int n = ae - as;
     if (be - bs != n) { return false; }
@@ -299,6 +300,7 @@ public final class EvalMinifier {
 
     private final StringBuilder sb = new StringBuilder("a");
 
+    @SuppressWarnings("synthetic-access")
     public String next() {
       while (true) {
         String name = sb.toString();
@@ -324,7 +326,7 @@ public final class EvalMinifier {
     }
   }
 
-  private static int nextIdentChar(char ch, boolean allowDigits) {
+  static int nextIdentChar(char ch, boolean allowDigits) {
     if (ch == 'z') { return 'A'; }
     if (ch == 'Z') { return '_'; }
     if (ch == '_') { return '$'; }
