@@ -1,4 +1,4 @@
-# Eclipse 
+# Eclipse
 .classpath
 .settings
 .project
@@ -11,3 +11,7 @@ target
 
 # sonarqube
 .sonar_lock
+
+# Emacs
+*~
+\#*\#
