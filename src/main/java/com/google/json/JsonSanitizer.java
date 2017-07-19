@@ -790,9 +790,10 @@ public final class JsonSanitizer {
     if (pos == intEnd) {  // No empty integer parts allowed in JSON.
       insert(pos, '0');
     } else if ('0' == jsonish.charAt(pos)) {
+      boolean reencoded = false;
+      long value = 0;
       if (intEnd - pos == 1 && intEnd < end
           && 'x' == (jsonish.charAt(intEnd) | 32)) {  // Recode hex.
-        int value = 0;
         for (intEnd = intEnd + 1; intEnd < end; ++intEnd) {
           char ch = jsonish.charAt(intEnd);
           int digVal;
@@ -808,14 +809,40 @@ public final class JsonSanitizer {
           }
           value = (value << 4) | digVal;
         }
-        elide(pos, intEnd);
-        sanitizedJson.append(value);
+        reencoded = true;
       } else if (intEnd - pos > 1) {  // Recode octal.
-        int value = 0;
         for (int i = pos; i < intEnd; ++i) {
-          value = (value << 3) | (jsonish.charAt(i) - '0');
+          int digVal = jsonish.charAt(i) - '0';
+          if (digVal < 0) {
+            break;
+          }
+          value = (value << 3) | digVal;
         }
+        reencoded = true;
+      }
+      if (reencoded) {
         elide(pos, intEnd);
+        if (value < 0) {
+          // Underflow.
+          // Avoid multiple signs.
+          // Putting out the underflowed value is the least bad option.
+          //
+          // We could use BigInteger, but that won't help many clients,
+          // and there is a valid use case for underflow: hex-encoded uint64s.
+          //
+          // First, consume any sign so that we don't put out strings like
+          // --1
+          int lastIndex = sanitizedJson.length() - 1;
+          if (lastIndex >= 0) {
+            char last = sanitizedJson.charAt(lastIndex);
+            if (last == '-' || last == '+') {
+              elide(lastIndex, lastIndex + 1);
+              if (last == '-') {
+                value = -value;
+              }
+            }
+          }
+        }
         sanitizedJson.append(value);
       }
     }

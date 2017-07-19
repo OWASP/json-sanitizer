@@ -198,4 +198,10 @@ public final class JsonSanitizerTest extends TestCase {
     assertEquals(1, new JsonSanitizer("", Integer.MIN_VALUE).getMaximumNestingDepth());
     assertEquals(JsonSanitizer.MAXIMUM_NESTING_DEPTH, new JsonSanitizer("", Integer.MAX_VALUE).getMaximumNestingDepth());
   }
+
+  @Test
+  public static final void testClosedArray() {
+    // Discovered by fuzzer with seed -Dfuzz.seed=df3b4778ce54d00a
+    assertSanitized("-68348121520322", "\ufeff-01742461140214282]");
+  }
 }

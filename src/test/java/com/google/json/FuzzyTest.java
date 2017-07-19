@@ -36,7 +36,7 @@ public final class FuzzyTest extends TestCase {
   @Test
   public static final void testSanitizerLikesFuzzyWuzzyInputs()
   throws Throwable {
-    int nRuns = 1000;
+    int nRuns = 10000;
     long seed;
     {
       // Try to fetch a seed from a system property so that we can replay failed
