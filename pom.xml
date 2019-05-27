@@ -148,6 +148,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
           <nohelp>true</nohelp>
           <show>public</show>
           <doctitle>JSON Sanitizer</doctitle>
+          <source>8</source>
         </configuration>
       </plugin>
 
