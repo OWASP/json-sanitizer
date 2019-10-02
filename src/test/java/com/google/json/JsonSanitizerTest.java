@@ -204,4 +204,11 @@ public final class JsonSanitizerTest extends TestCase {
     // Discovered by fuzzer with seed -Dfuzz.seed=df3b4778ce54d00a
     assertSanitized("-68348121520322", "\ufeff-01742461140214282]");
   }
+
+  @Test
+  public static final void testIssue13() {
+    assertSanitized(
+        "[ { \"description\": \"aa##############aa\" }, 1 ]",
+        "[ { \"description\": \"aa##############aa\" }, 1 ]");
+  }
 }
