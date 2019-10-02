@@ -99,13 +99,16 @@ final class FuzzyStringGenerator implements Iterable<String> {
     this.rnd = rnd;
   }
 
+  @Override
   public Iterator<String> iterator() {
     return new Iterator<String>() {
       private @Nullable String basis;
       private @Nullable String pending;
+      @Override
       public boolean hasNext() {
         return true;
       }
+      @Override
       public String next() {
         if (pending == null) {
           fuzz();
@@ -115,6 +118,7 @@ final class FuzzyStringGenerator implements Iterable<String> {
         if (0 == rnd.nextInt(16)) { basis = null; }
         return s;
       }
+      @Override
       public void remove() {
         throw new UnsupportedOperationException();
       }
