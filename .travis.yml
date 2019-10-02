@@ -9,4 +9,5 @@ jdk:
   - oraclejdk11
 
 install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -Dgpg.skip=true -B -q
-script: "mvn verify -Dgpg.skip=true -Dmaven.javadoc.skip=$(echo $TRAVIS_JDK_VERSION | grep -q openjdk6 && echo -n true || echo -n false) -B -q"
+# See bugs.openjdk.java.net/browse/JDK-8212233 for why jdk11's javadoc is borken
+script: "mvn verify -Dgpg.skip=true -Dmaven.javadoc.skip=$(echo $TRAVIS_JDK_VERSION | egrep -q 'openjdk(6|11)' && echo -n true || echo -n false) -B -q"
