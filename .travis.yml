@@ -4,6 +4,3 @@ jdk:
   - openjdk8
   - openjdk11
   - openjdk13
-
-install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true -B -q
-script: "mvn verify -B -q"
