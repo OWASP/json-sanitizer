@@ -28,7 +28,7 @@ package com.google.json;
  * Applied to your output before you send, it will coerce minor mistakes in
  * encoding and make it easier to embed your JSON in HTML and XML.
  *
- * <h3>Input</h3>
+ * <h2>Input</h2>
  * The sanitizer takes JSON like content, and interprets it as JS eval would.
  * Specifically, it deals with these non-standard constructs.
  * <ul>
@@ -49,7 +49,7 @@ package com.google.json;
  * missing close brackets. If an input contains only white-space then the valid
  * JSON string {@code null} is substituted.
  *
- * <h3>Output</h3>
+ * <h2>Output</h2>
  * The output is well-formed JSON as defined by
  * <a href="http://www.ietf.org/rfc/rfc4627.txt">RFC 4627</a>.
  * The output satisfies three additional properties:
@@ -69,7 +69,7 @@ package com.google.json;
  *   <a href="http://www.w3.org/TR/xml/#charsets">allowed in XML</a> unescaped.
  * </ol>
  *
- * <h3>Security</h3>
+ * <h2>Security</h2>
  * Since the output is well-formed JSON, passing it to <code>eval</code> will
  * have no side-effects and no free variables, so is neither a code-injection
  * vector, nor a vector for exfiltration of secrets.
@@ -82,7 +82,7 @@ package com.google.json;
  * {@code eval} or {@code innerHTML} then that client-side code might suffer
  * unintended side-effects.
  *
- * <h3>Efficiency</h3>
+ * <h2>Efficiency</h2>
  * The sanitize method will return the input string without allocating a new
  * buffer when the input is already valid JSON that satisfies the properties
  * above.  Thus, if used on input that is usually well formed, it has minimal
