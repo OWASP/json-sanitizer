@@ -56,14 +56,12 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized("\"foo\"");
     assertSanitized("\"foo\"", "'foo'");
     assertSanitized(
-        "\"<script>foo()<\\/script>\"", "\"<script>foo()</script>\"");
-    assertSanitized(
-        "\"<script>foo()<\\/script>\"", "\"<script>foo()</script>\"");
-    assertSanitized("\"<\\/SCRIPT\\n>\"", "\"</SCRIPT\n>\"");
-    assertSanitized("\"<\\/ScRIpT\"", "\"</ScRIpT\"");
+        "\"\\u003cscript>foo()\\u003c/script>\"", "\"<script>foo()</script>\"");
+    assertSanitized("\"\\u003c/SCRIPT\\n>\"", "\"</SCRIPT\n>\"");
+    assertSanitized("\"\\u003c/ScRIpT\"", "\"</ScRIpT\"");
     // \u0130 is a Turkish dotted upper-case 'I' so the lower case version of
     // the tag name is "script".
-    assertSanitized("\"<\\/ScR\u0130pT\"", "\"</ScR\u0130pT\"");
+    assertSanitized("\"\\u003c/ScR\u0130pT\"", "\"</ScR\u0130pT\"");
     assertSanitized("\"<b>Hello</b>\"");
     assertSanitized("\"<s>Hello</s>\"");
     assertSanitized("\"<[[\\u005d]>\"", "'<[[]]>'");
@@ -210,5 +208,24 @@ public final class JsonSanitizerTest extends TestCase {
     assertSanitized(
         "[ { \"description\": \"aa##############aa\" }, 1 ]",
         "[ { \"description\": \"aa##############aa\" }, 1 ]");
+  }
+
+  @Test
+  public static final void testHtmlParserStateChanges() {
+    assertSanitized("\"\\u003cscript\"", "\"<script\"");
+    assertSanitized("\"\\u003cScript\"", "\"<Script\"");
+    // \u0130 is a Turkish dotted upper-case 'I' so the lower case version of
+    // the tag name is "script".
+    assertSanitized("\"\\u003cScR\u0130pT\"", "\"<ScR\u0130pT\"");
+    assertSanitized("\"\\u003cSCRIPT\\n>\"", "\"<SCRIPT\n>\"");
+    assertSanitized("\"script\"", "<script");
+
+    assertSanitized("\"\\u003c!--\"", "\"<!--\"");
+    assertSanitized("-0", "<!--");
+
+    assertSanitized("\"--\\u003e\"", "\"-->\"");
+    assertSanitized("-0", "-->");
+
+    assertSanitized("\"\\u003c!--\\u003cscript>\"", "\"<!--<script>\"");
   }
 }
