@@ -513,7 +513,7 @@ public final class JsonSanitizer {
     for (int i = start; i < end; ++i) {
       char ch = jsonish.charAt(i);
       switch (ch) {
-        case '\t': replace(i, i + 1, "\\t"); break; // tabs needs to be escaped, also
+        case '\t': replace(i, i + 1, "\\t"); break;
         // Fixup newlines.
         case '\n': replace(i, i + 1, "\\n"); break;
         case '\r': replace(i, i + 1, "\\r"); break;
@@ -648,7 +648,9 @@ public final class JsonSanitizer {
           //     Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD]
           //            | [#x10000-#x10FFFF]
           if (ch < 0x20) {
-            if (ch == 9 || ch == 0xa || ch == 0xd) { continue; }
+             // Proceed to hex-escape below since control characters are
+             // disallowed by ECMA-404 which governs JavaScript's `JSON.parse`.
+             // Common ones like CR, LF, and TAB are given short escape sequences above.
           } else if (ch < 0xd800) {  // Not a surrogate.
             continue;
           } else if (ch < 0xe000) {  // A surrogate
