@@ -513,6 +513,7 @@ public final class JsonSanitizer {
     for (int i = start; i < end; ++i) {
       char ch = jsonish.charAt(i);
       switch (ch) {
+        case '\t': replace(i, i + 1, "\\t"); break; // tabs needs to be escaped, also
         // Fixup newlines.
         case '\n': replace(i, i + 1, "\\n"); break;
         case '\r': replace(i, i + 1, "\\r"); break;
