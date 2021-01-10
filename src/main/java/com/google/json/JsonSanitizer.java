@@ -14,7 +14,6 @@
 
 package com.google.json;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /**
@@ -553,39 +552,50 @@ public final class JsonSanitizer {
         // https://www.w3.org/TR/html53/syntax.html#script-data-escaped-state
         // https://www.w3.org/TR/html53/syntax.html#script-data-double-escaped-state
         // https://www.w3.org/TR/xml/#sec-cdata-sect
-        case '<':
+        case '<': {
           // Disallow <!--, which lets the HTML parser switch into the "script
           // data escaped" state.
           // Disallow <script, which followed by various characters lets the
           // HTML parser switch into or out of the "script data double escaped"
           // state.
           // Disallow </script, which ends a script block.
-          if (i + 3 >= end)
+          if (i + 3 >= end) {
             break;
+          }
           char c1 = jsonish.charAt(i + 1);
           char c2 = jsonish.charAt(i + 2);
           char c3 = jsonish.charAt(i + 3);
           char lc1 = (char) (c1 | 32);
           char lc2 = (char) (c2 | 32);
           char lc3 = (char) (c3 | 32);
-          if ((c1 == '!' && c2 == '-' && c3 == '-') ||
-              (lc1 == 's' && lc2 == 'c' && lc3 == 'r') ||
-              (c1 == '/' && lc2 == 's' && lc3 == 'c')) {
+          if (
+                  (c1 == '\\' || c2 == '\\' || c3 == '\\') ||
+                          (c1 == '!' && c2 == '-' && c3 == '-') ||
+                          (lc1 == 's' && lc2 == 'c' && lc3 == 'r') ||
+                          (c1 == '/' && lc2 == 's' && lc3 == 'c')
+          ) {
             replace(i, i + 1, "\\u003c"); // Escaped <
           }
           break;
+        }
         case '>':
           // Disallow -->, which lets the HTML parser switch out of the "script
           // data escaped" or "script data double escaped" state.
-          if ((i - 2) >= start && '-' == jsonish.charAt(i - 2)
-              && '-' == jsonish.charAt(i - 1)) {
-            replace(i, i + 1, "\\u003e"); // Escaped >
+          if ((i - 2) >= start) {
+            int cm2 = jsonish.charAt(i - 2);
+            int cm1 = jsonish.charAt(i - 1);
+            if (('-' == cm2 || '\\' == cm2) && ('-' == cm1 || '\\' == cm1)) {
+              replace(i, i + 1, "\\u003e"); // Escaped >
+            }
           }
           break;
         case ']':
-          if (i + 2 < end && ']' == jsonish.charAt(i + 1)
-              && '>' == jsonish.charAt(i + 2)) {
-            replace(i, i + 1, "\\u005d");
+          if (i + 2 < end) {
+            char c1 = jsonish.charAt(i + 1);
+            char c2 = jsonish.charAt(i + 2);
+            if ((']' == c1 || '\\' == c1) && ('>' == c2 || '\\' == c2)) {
+              replace(i, i + 1, "\\u005d");
+            }
           }
           break;
         // Normalize escape sequences.
