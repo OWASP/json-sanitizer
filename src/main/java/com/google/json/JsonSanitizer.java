@@ -14,6 +14,9 @@
 
 package com.google.json;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 /**
  * Given JSON-like content, converts it to valid JSON.
  * This can be attached at either end of a data-pipeline to help satisfy
@@ -618,22 +621,27 @@ public final class JsonSanitizer {
               elide(i, i + 1);
               break;
             case '0': case '1': case '2': case '3':
-            case '4': case '5': case '6': case '7':
-              int octalEnd = i + 1;
-              if (octalEnd + 1 < end && isOctAt(octalEnd + 1)) {
+            case '4': case '5': case '6': case '7': {
+              int octalStart = i + 1;
+              int octalEnd = octalStart;
+              ++octalEnd;
+              if (octalEnd < end && isOctAt(octalEnd)) {
                 ++octalEnd;
-                if (ch <= '3' && octalEnd + 1 < end && isOctAt(octalEnd + 1)) {
+                if (sch <= '3' && octalEnd < end && isOctAt(octalEnd)) {
                   ++octalEnd;
                 }
-                int value = 0;
-                for (int j = i; j < octalEnd; ++j) {
-                  value = (value << 3) | (jsonish.charAt(j) - '0');
-                }
-                replace(i + 1, octalEnd, "u00");
-                appendHex(value, 2);
               }
+              int value = 0;
+              for (int j = octalStart; j < octalEnd; ++j) {
+                char digit = jsonish.charAt(j);
+                value = (value << 3) | (digit - '0');
+              }
+              replace(octalStart, octalEnd, "u00");
+              appendHex(value, 2);
+
               i = octalEnd - 1;
               break;
+            }
             default:
               // Literal char that is recognized by JS but not by JSON.
               // "\-" is valid JS but not valid JSON.
@@ -819,9 +827,13 @@ public final class JsonSanitizer {
       insert(pos, '0');
     } else if ('0' == jsonish.charAt(pos)) {
       boolean reencoded = false;
-      long value = 0;
+      int maxDigVal = 0; // The value of the max digit
+      int probableBase = 10; // The base suggested by the prefix
+      int firstDigitIndex = -1;
       if (intEnd - pos == 1 && intEnd < end
-          && 'x' == (jsonish.charAt(intEnd) | 32)) {  // Recode hex.
+              && 'x' == (jsonish.charAt(intEnd) | 32)) {  // Recode hex.
+        probableBase = 16;
+        firstDigitIndex = intEnd + 1;
         for (intEnd = intEnd + 1; intEnd < end; ++intEnd) {
           char ch = jsonish.charAt(intEnd);
           int digVal;
@@ -835,43 +847,38 @@ public final class JsonSanitizer {
               break;
             }
           }
-          value = (value << 4) | digVal;
+          maxDigVal = Math.max(digVal, maxDigVal);
         }
         reencoded = true;
       } else if (intEnd - pos > 1) {  // Recode octal.
+        probableBase = 8;
+        firstDigitIndex = pos;
         for (int i = pos; i < intEnd; ++i) {
           int digVal = jsonish.charAt(i) - '0';
           if (digVal < 0) {
             break;
           }
-          value = (value << 3) | digVal;
+          maxDigVal = Math.max(digVal, maxDigVal);
         }
         reencoded = true;
       }
       if (reencoded) {
+        // Avoid multiple signs.
+        // Putting out the underflowed value is the least bad option.
         elide(pos, intEnd);
-        if (value < 0) {
-          // Underflow.
-          // Avoid multiple signs.
-          // Putting out the underflowed value is the least bad option.
-          //
-          // We could use BigInteger, but that won't help many clients,
-          // and there is a valid use case for underflow: hex-encoded uint64s.
-          //
-          // First, consume any sign so that we don't put out strings like
-          // --1
-          int lastIndex = sanitizedJson.length() - 1;
-          if (lastIndex >= 0) {
-            char last = sanitizedJson.charAt(lastIndex);
-            if (last == '-' || last == '+') {
-              elide(lastIndex, lastIndex + 1);
-              if (last == '-') {
-                value = -value;
-              }
-            }
-          }
+
+        String digits = jsonish.substring(firstDigitIndex, intEnd);
+
+        int nDigits = digits.length();
+        int base = probableBase > maxDigVal ? probableBase : maxDigVal > 10 ? 16 : 10;
+        if (DIGITS_BY_BASE_THAT_FIT_IN_63B[base] >= nDigits) {
+          long value = Long.parseLong(digits, base);
+          sanitizedJson.append(value);
+        } else {
+          // If there are lots of digits, we need to reencode using a BigInteger
+          BigInteger value = new BigInteger(digits, base);
+          sanitizedJson.append(value);
         }
-        sanitizedJson.append(value);
       }
     }
     pos = intEnd;
@@ -1157,9 +1164,9 @@ public final class JsonSanitizer {
   }
 
   private void appendHex(int n, int nDigits) {
-    for (int i = 0, x = n; i < nDigits; ++i, x >>>= 4) {
-      int dig = x & 0xf;
-      sanitizedJson.append(dig + (dig < 10 ? '0' : (char) ('a' - 10)));
+    for (int quadsToShift = nDigits; --quadsToShift >= 0;) {
+      int dig = (n >>> (4 * quadsToShift)) & 0xf;
+      sanitizedJson.append((char) (dig + (dig < 10 ? '0' : (char) ('a' - 10))));
     }
   }
 
@@ -1200,5 +1207,11 @@ public final class JsonSanitizer {
   private static final char[] HEX_DIGITS = new char[] {
     '0', '1', '2', '3', '4', '5', '6', '7',
     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+  };
+
+  private static final int[] DIGITS_BY_BASE_THAT_FIT_IN_63B = {
+          -1,               -1, 63,               39, 31, 27, 24, 22,
+          21 /* base 8  */, 19, 18 /* base 10 */, 18, 17, 17, 16, 16,
+          15 /* base 16 */,
   };
 }
