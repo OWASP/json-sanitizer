@@ -894,7 +894,9 @@ public final class JsonSanitizer {
 
         int nDigits = digits.length();
         int base = probableBase > maxDigVal ? probableBase : maxDigVal > 10 ? 16 : 10;
-        if (DIGITS_BY_BASE_THAT_FIT_IN_63B[base] >= nDigits) {
+        if (nDigits == 0) {
+          sanitizedJson.append('0');
+        } else if (DIGITS_BY_BASE_THAT_FIT_IN_63B[base] >= nDigits) {
           long value = Long.parseLong(digits, base);
           sanitizedJson.append(value);
         } else {
