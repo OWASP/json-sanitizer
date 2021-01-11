@@ -562,15 +562,20 @@ public final class JsonSanitizer {
           if (i + 3 >= end) {
             break;
           }
-          char c1 = jsonish.charAt(i + 1);
-          char c2 = jsonish.charAt(i + 2);
-          char c3 = jsonish.charAt(i + 3);
+          int la = i + 1;
+          int c1AndDelta = unescapedChar(jsonish, la);
+          char c1 = (char) c1AndDelta;
+          la += c1AndDelta >>> 16;
+          long c2AndDelta = unescapedChar(jsonish, la);
+          char c2 = (char) c2AndDelta;
+          la += c2AndDelta >>> 16;
+          long c3AndEnd = unescapedChar(jsonish, la);
+          char c3 = (char) c3AndEnd;
           char lc1 = (char) (c1 | 32);
           char lc2 = (char) (c2 | 32);
           char lc3 = (char) (c3 | 32);
           if (
-                  (c1 == '\\' || c2 == '\\' || c3 == '\\') ||
-                          (c1 == '!' && c2 == '-' && c3 == '-') ||
+                  (c1 == '!' && c2 == '-' && c3 == '-') ||
                           (lc1 == 's' && lc2 == 'c' && lc3 == 'r') ||
                           (c1 == '/' && lc2 == 's' && lc3 == 'c')
           ) {
@@ -582,18 +587,26 @@ public final class JsonSanitizer {
           // Disallow -->, which lets the HTML parser switch out of the "script
           // data escaped" or "script data double escaped" state.
           if ((i - 2) >= start) {
-            int cm2 = jsonish.charAt(i - 2);
-            int cm1 = jsonish.charAt(i - 1);
-            if (('-' == cm2 || '\\' == cm2) && ('-' == cm1 || '\\' == cm1)) {
+            int lb = i - 1;
+            int cm1AndDelta = unescapedCharRev(jsonish, lb);
+            char cm1 = (char) cm1AndDelta;
+            lb -= cm1AndDelta >>> 16;
+            int cm2AndDelta = unescapedCharRev(jsonish, lb);
+            char cm2 = (char) cm2AndDelta;
+            if ('-' == cm2 && '-' == cm1) {
               replace(i, i + 1, "\\u003e"); // Escaped >
             }
           }
           break;
         case ']':
           if (i + 2 < end) {
-            char c1 = jsonish.charAt(i + 1);
-            char c2 = jsonish.charAt(i + 2);
-            if ((']' == c1 || '\\' == c1) && ('>' == c2 || '\\' == c2)) {
+            int la = i + 1;
+            long c1AndDelta = unescapedChar(jsonish, la);
+            char c1 = (char) c1AndDelta;
+            la += c1AndDelta >>> 16;
+            long c2AndEnd = unescapedChar(jsonish, la);
+            char c2 = (char) c2AndEnd;
+            if (']' == c1 && '>' == c2) {
               replace(i, i + 1, "\\u005d");
             }
           }
@@ -1148,15 +1161,26 @@ public final class JsonSanitizer {
   }
 
   private boolean isOctAt(int i) {
-    char ch = jsonish.charAt(i);
+    return isOct(jsonish.charAt(i));
+  }
+
+  private static boolean isOct(char ch) {
     return '0' <= ch && ch <= '7';
   }
 
   private boolean isHexAt(int i) {
-    char ch = jsonish.charAt(i);
+    return isHex(jsonish.charAt(i));
+  }
+
+  private static boolean isHex(char ch) {
     if ('0' <= ch && ch <= '9') { return true; }
-    ch |= 32;
-    return 'a' <= ch && ch <= 'f';
+    int lch = ch | 32;
+    return 'a' <= lch && lch <= 'f';
+  }
+
+  private static int hexVal(char ch) {
+    int lch = ch | 32;
+    return lch - (lch <= '9' ? '0' : 'a' - 10);
   }
 
   private boolean isJsonSpecialChar(int i) {
@@ -1224,4 +1248,104 @@ public final class JsonSanitizer {
           21 /* base 8  */, 19, 18 /* base 10 */, 18, 17, 17, 16, 16,
           15 /* base 16 */,
   };
+
+  /**
+   * Looks for a literal character or escape sequence at left in s.
+   * Packs the char into the lowest 16 bytes of the output and the
+   * count of characters in the sequence in the remaining bits
+   */
+  private static int unescapedChar(String s, int left) {
+    int n = s.length();
+    if (left >= n) {
+      return 0;
+    }
+    char c = s.charAt(left);
+    if (c == '\\') {
+      if (left + 1 == n) {
+        return 0x10000;
+      }
+      char nc = s.charAt(left + 1);
+      switch (nc) {
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7': {
+          int octalStart = left + 1;
+          int octalEnd = octalStart;
+          ++octalEnd;
+          if (octalEnd < n && isOct(s.charAt(octalEnd))) {
+            ++octalEnd;
+            if (nc <= '3' && octalEnd < n && isOct(s.charAt(octalEnd))) {
+              ++octalEnd;
+            }
+          }
+          int value = 0;
+          for (int j = octalStart; j < octalEnd; ++j) {
+            char digit = s.charAt(j);
+            value = (value << 3) | (digit - '0');
+          }
+          return ((octalEnd - left) << 16) | value;
+        }
+        case 'x':
+          if (left + 3 < n) {
+            char d0 = s.charAt(left + 2);
+            char d1 = s.charAt(left + 3);
+            if (isHex(d0) && isHex(d1)) {
+              return 0x4000 | (hexVal(d0) << 4) | hexVal(d1);
+            }
+          }
+          break;
+        case 'u':
+          if (left + 5 < n) {
+            char d0 = s.charAt(left + 2);
+            char d1 = s.charAt(left + 3);
+            char d2 = s.charAt(left + 4);
+            char d3 = s.charAt(left + 5);
+            if (isHex(d0) && isHex(d1) && isHex(d2) && isHex(d3)) {
+              return 0x6000 |
+                      (hexVal(d0) << 12) | (hexVal(d1) << 8) | (hexVal(d2) << 4) | hexVal(d3);
+            }
+          }
+          break;
+        case 'b': return (0x20000 | '\b');
+        case 'f': return (0x20000 | '\f');
+        case 'n': return 0x2000A;
+        case 'r': return 0x2000D;
+        case 't': return 0x20009;
+        case 'v': return 0x20008;
+        default: break;
+      }
+      return (0x20000) | nc;
+    } else {
+      return 0x10000 | c;
+    }
+  }
+
+  private static int unescapedCharRev(String s, int rightIncl) {
+    if (rightIncl < 0) {
+      return 0;
+    }
+    // \?
+    // \01
+    // \012
+    // \x00
+    // \u0000
+    for (int i = 1; i < 6; ++i) {
+      int left = rightIncl - i;
+      if (left < 0) { break; }
+      if (s.charAt(left) == '\\') {
+        // If there are an odd number of '\\' then decode.
+        int n = 1;
+        while (left - n >= 0 && s.charAt(left - n) == '\\') {
+          ++n;
+        }
+        if ((n & 1) == 0) {
+          int unescaped = unescapedChar(s, left);
+          if ((unescaped >>> 16) == i) {
+            return unescaped;
+          }
+        }
+        break;
+      }
+    }
+    return 0x10000 | s.charAt(rightIncl);
+  }
 }
