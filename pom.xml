@@ -11,7 +11,7 @@
     When the version ends with "-SNAPSHOT", then `mvn deploy` moves it to
     the snapshot directory instead of into staging proper.
    -->
-  <version>1.2.2-SNAPSHOT</version>
+  <version>1.2.2</version>
   <name>json-sanitizer</name>
   <description>
 Given JSON-like content, converts it to valid JSON.
