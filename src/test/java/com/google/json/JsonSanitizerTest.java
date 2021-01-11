@@ -149,9 +149,9 @@ public final class JsonSanitizerTest extends TestCase {
         // Exponent way out of representable range in a JS double.
         "{1e0001234567890123456789123456789123456789:0}"
                     );
-    // This is an odd consequence of the way we recode octal literals.
-    // Our octal recoder does not fail on digits '8' or '9'.
-    assertSanitized("-2035208041", "-016923547559");
+    // Our octal recoder interprets an octal-like literal that includes a digit '8' or '9' as
+    // decimal.
+    assertSanitized("-16923547559", "-016923547559");
   }
 
   @Test
@@ -200,7 +200,7 @@ public final class JsonSanitizerTest extends TestCase {
   @Test
   public static final void testClosedArray() {
     // Discovered by fuzzer with seed -Dfuzz.seed=df3b4778ce54d00a
-    assertSanitized("-68348121520322", "\ufeff-01742461140214282]");
+    assertSanitized("-1742461140214282", "\ufeff-01742461140214282]");
   }
 
   @Test
