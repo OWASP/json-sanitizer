@@ -590,11 +590,13 @@ public final class JsonSanitizer {
             int lb = i - 1;
             int cm1AndDelta = unescapedCharRev(jsonish, lb);
             char cm1 = (char) cm1AndDelta;
-            lb -= cm1AndDelta >>> 16;
-            int cm2AndDelta = unescapedCharRev(jsonish, lb);
-            char cm2 = (char) cm2AndDelta;
-            if ('-' == cm2 && '-' == cm1) {
-              replace(i, i + 1, "\\u003e"); // Escaped >
+            if ('-' == cm1) {
+                lb -= cm1AndDelta >>> 16;
+                int cm2AndDelta = unescapedCharRev(jsonish, lb);
+                char cm2 = (char) cm2AndDelta;
+                if ('-' == cm2) {
+                    replace(i, i + 1, "\\u003e"); // Escaped >
+                }
             }
           }
           break;
@@ -1291,7 +1293,7 @@ public final class JsonSanitizer {
             char d0 = s.charAt(left + 2);
             char d1 = s.charAt(left + 3);
             if (isHex(d0) && isHex(d1)) {
-              return 0x4000 | (hexVal(d0) << 4) | hexVal(d1);
+              return 0x40000 | (hexVal(d0) << 4) | hexVal(d1);
             }
           }
           break;
@@ -1302,7 +1304,7 @@ public final class JsonSanitizer {
             char d2 = s.charAt(left + 4);
             char d3 = s.charAt(left + 5);
             if (isHex(d0) && isHex(d1) && isHex(d2) && isHex(d3)) {
-              return 0x6000 |
+              return 0x60000 |
                       (hexVal(d0) << 12) | (hexVal(d1) << 8) | (hexVal(d2) << 4) | hexVal(d3);
             }
           }
@@ -1339,9 +1341,9 @@ public final class JsonSanitizer {
         while (left - n >= 0 && s.charAt(left - n) == '\\') {
           ++n;
         }
-        if ((n & 1) == 0) {
+        if ((n & 1) == 1) {
           int unescaped = unescapedChar(s, left);
-          if ((unescaped >>> 16) == i) {
+          if ((unescaped >>> 16) - 1 == i) {
             return unescaped;
           }
         }
