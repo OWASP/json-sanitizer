@@ -285,14 +285,14 @@ public final class EvalMinifier {
   private static final String[][] RESERVED_KEYWORDS = {
     {},
     {},
-    {"do", "if", "in", },
-    {"for", "let", "new", "try", "var"},
-    {"case", "else", "enum", "eval", "null", "this", "true", "void", "with"},
-    {"catch", "class", "const", "false", "super", "throw", "while", "yield"},
-    {"delete", "export", "import", "return", "switch", "static", "typeof"},
-    {"default", "extends", "public", "private"},
-    {"continue", "function"},
-    {"arguments"},
+    {"as", "do", "if", "in", "of"},
+    {"for", "get", "let", "new", "set", "try", "var"},
+    {"case", "else", "enum", "eval", "from", "null", "this", "true", "void", "with"},
+    {"async", "await", "break", "catch", "class", "const", "false", "super", "throw", "while", "yield"},
+    {"delete", "export", "import", "public", "return", "switch", "static", "target", "typeof"},
+    {"default", "extends", "finally", "package", "private"},
+    {"continue", "debugger", "function"},
+    {"arguments", "interface", "protected"},
     {"implements", "instanceof"}
   };
 
