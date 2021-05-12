@@ -331,7 +331,6 @@ public final class JsonSanitizerTest extends TestCase {
 
   @Test
   public static final void testDashDashGtEscaped() {
-    System.err.println("TEST");
     String input = "'->??-\\->";
     String want = "\"->??--\\u003e\"";
     String got1 = JsonSanitizer.sanitize(input);
@@ -342,9 +341,18 @@ public final class JsonSanitizerTest extends TestCase {
 
   @Test
   public static final void testDashDashGtUEscaped() {
-    System.err.println("TEST");
     String input = "'.\\u002D->'";
     String want = "\".\\u002D-\\u003e\"";
+    String got1 = JsonSanitizer.sanitize(input);
+    assertEquals(want, got1);
+    String got2 = JsonSanitizer.sanitize(got1);
+    assertEquals(want, got2);
+  }
+
+  @Test
+  public static final void testEscHtmlCommentClose() {
+    String input = "x--\\>";
+    String want = "\"x--\\u003e\"";
     String got1 = JsonSanitizer.sanitize(input);
     assertEquals(want, got1);
     String got2 = JsonSanitizer.sanitize(got1);

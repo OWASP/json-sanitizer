@@ -588,6 +588,10 @@ public final class JsonSanitizer {
           // data escaped" or "script data double escaped" state.
           if ((i - 2) >= start) {
             int lb = i - 1;
+            if ((runSlashPreceding(jsonish, lb) & 1) == 1) {
+              // If the '>' is escaped backup over its slash.
+              lb -= 1;
+            }
             int cm1AndDelta = unescapedCharRev(jsonish, lb);
             char cm1 = (char) cm1AndDelta;
             if ('-' == cm1) {
@@ -1351,5 +1355,13 @@ public final class JsonSanitizer {
       }
     }
     return 0x10000 | s.charAt(rightIncl);
+  }
+
+  private static int runSlashPreceding(String jsonish, int pos) {
+    int startOfRun = pos;
+    while (startOfRun >= 0 && jsonish.charAt(startOfRun) == '\\') {
+      --startOfRun;
+    }
+    return pos - startOfRun;
   }
 }
