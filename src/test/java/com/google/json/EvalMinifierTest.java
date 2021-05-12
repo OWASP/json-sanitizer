@@ -20,6 +20,9 @@ import org.junit.Test;
 
 import com.google.json.EvalMinifier.NameGenerator;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @SuppressWarnings("javadoc")
 public final class EvalMinifierTest extends TestCase {
 
@@ -76,12 +79,24 @@ public final class EvalMinifierTest extends TestCase {
     assertEquals("c", ng.next());
     for (int i = 30; --i >= 0;) { ng.next(); }
     assertEquals("H", ng.next());
-    for (int i = 30; --i >= 0;) { ng.next(); }
-    assertEquals("ak", ng.next());
-    for (int i = 511; --i >= 0;) { ng.next(); }
-    assertEquals("im", ng.next());
-    // "in" is a reserved word.
-    assertEquals("io", ng.next());
+    Set<String> shortNames = new HashSet<String>();
+    for (int i = 0; i < 1000; ++i) { shortNames.add(ng.next()); }
+    assertTrue(shortNames.contains("ar"));
+    assertFalse(shortNames.contains("as"));
+    assertTrue(shortNames.contains("au"));
+    assertTrue(shortNames.contains("dn"));
+    assertFalse(shortNames.contains("do"));
+    assertTrue(shortNames.contains("dp"));
+    assertTrue(shortNames.contains("ie"));
+    assertFalse(shortNames.contains("if"));
+    assertTrue(shortNames.contains("ig"));
+    assertTrue(shortNames.contains("ih"));
+    assertTrue(shortNames.contains("ii"));
+    assertTrue(shortNames.contains("ij"));
+    assertTrue(shortNames.contains("ik"));
+    assertTrue(shortNames.contains("il"));
+    assertTrue(shortNames.contains("im"));
+    assertFalse(shortNames.contains("in"));
+    assertTrue(shortNames.contains("io"));
   }
-
 }
