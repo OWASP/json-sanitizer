@@ -1,4 +1,5 @@
-# json-sanitizer [<img src="https://travis-ci.org/OWASP/java-html-sanitizer.svg">](https://travis-ci.org/OWASP/java-html-sanitizer)
+# json-sanitizer [<img src="https://travis-ci.org/OWASP/java-html-sanitizer.svg">](https://travis-ci.org/OWASP/java-html-sanitizer) [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/json-sanitizer.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:json-sanitizer)
+
 
 Given JSON-like content, The JSON Sanitizer converts it to valid JSON.
 
