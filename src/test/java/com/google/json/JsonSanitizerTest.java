@@ -16,17 +16,19 @@ package com.google.json;
 
 import static com.google.json.JsonSanitizer.DEFAULT_NESTING_DEPTH;
 import static com.google.json.JsonSanitizer.sanitize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Locale;
-import junit.framework.TestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 @SuppressWarnings("javadoc")
-public final class JsonSanitizerTest extends TestCase {
+public final class JsonSanitizerTest {
 
   private static void assertSanitized(String golden, String input) {
     assertSanitized(golden, input, DEFAULT_NESTING_DEPTH);
@@ -34,9 +36,9 @@ public final class JsonSanitizerTest extends TestCase {
 
   private static void assertSanitized(String golden, String input, int maximumNestingDepth) {
     String actual = sanitize(input, maximumNestingDepth);
-    assertEquals(input, golden, actual);
+    assertEquals(golden, actual, input);
     if (actual.equals(input)) {
-      assertSame(input, input, actual);
+      assertSame(input, actual, input);
     }
   }
 
@@ -45,7 +47,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testSanitize() {
+  public final void testSanitize() {
     // On the left is the sanitized output, and on the right the input.
     // If there is a single string, then the input is fine as-is.
     assertSanitized("null", null);
@@ -159,14 +161,14 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testIssue3() {
+  public final void testIssue3() {
     // These triggered index out of bounds and assertion errors.
     assertSanitized("[{\"\":{}}]", "[{{},\u00E4");
     assertSanitized("[{\"\":{}}]", "[{{\u00E4\u00E4},\u00E4");
   }
 
   @Test
-  public static final void testIssue4() {
+  public final void testIssue4() {
     // Make sure that bare words are quoted.
     assertSanitized("\"dev\"", "dev");
     assertSanitized("\"eval\"", "eval");
@@ -180,7 +182,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testMaximumNestingLevel() {
+  public final void testMaximumNestingLevel() {
     // 66 nested maps; the sanitizer supplies an empty key for each.
     String nestedMaps = repeat("{", 66) + repeat("}", 66);
     String sanitizedNestedMaps = repeat("{\"\":", 65) + "{}" + repeat("}", 65);
@@ -192,7 +194,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testExcessiveNestingIsReplacedWithNull() {
+  public final void testExcessiveNestingIsReplacedWithNull() {
     // Issue #35: over-deep input must not throw.
     int d = DEFAULT_NESTING_DEPTH;
     // Unclosed.
@@ -236,26 +238,26 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testMaximumNestingLevelAssignment() {
+  public final void testMaximumNestingLevelAssignment() {
     assertEquals(1, new JsonSanitizer("", Integer.MIN_VALUE).getMaximumNestingDepth());
     assertEquals(JsonSanitizer.MAXIMUM_NESTING_DEPTH, new JsonSanitizer("", Integer.MAX_VALUE).getMaximumNestingDepth());
   }
 
   @Test
-  public static final void testUnopenedArray() {
+  public final void testUnopenedArray() {
     // Discovered by fuzzer with seed -Dfuzz.seed=df3b4778ce54d00a
     assertSanitized("-1742461140214282", "\ufeff-01742461140214282]");
   }
 
   @Test
-  public static final void testIssue13() {
+  public final void testIssue13() {
     assertSanitized(
         "[ { \"description\": \"aa##############aa\" }, 1 ]",
         "[ { \"description\": \"aa##############aa\" }, 1 ]");
   }
 
   @Test
-  public static final void testHtmlParserStateChanges() {
+  public final void testHtmlParserStateChanges() {
     assertSanitized("\"\\u003cscript\"", "\"<script\"");
     assertSanitized("\"\\u003cScript\"", "\"<Script\"");
     // \u0130 is a Turkish dotted upper-case 'I' so the lower case version of
@@ -274,7 +276,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testLongOctalNumberWithBadDigits() {
+  public final void testLongOctalNumberWithBadDigits() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     assertEquals(
             "-888888888888888888888",
@@ -283,7 +285,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testLongNumberInUnclosedInputWithU80() {
+  public final void testLongNumberInUnclosedInputWithU80() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     assertEquals(
             "{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"x80\":{\"\":{\"\":[-400557869725698078427]}}}}}}}}}",
@@ -292,13 +294,13 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testSlashFour() {
+  public final void testSlashFour() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     assertEquals("\"y\\u0004\"", JsonSanitizer.sanitize("y\\4")); // "y\4"
   }
 
   @Test
-  public static final void testUnterminatedObject() {
+  public final void testUnterminatedObject() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     String input = "?\u0000\u0000\u0000{{\u0000\ufffd\u0003]ve{R]\u00000\ufffd\u0016&e{\u0003]\ufffda<!.b<!<!cc1x\u0000\u00005{281<\u0000.{t\u0001\ufffd5\ufffd{5\ufffd\ufffd0\ufffd15\r\ufffd\u0000\u0000\u0000~~-0081273222428822883223759,55\ufffd\u0000\ufffd\t\u0000\ufffd";
     String got = JsonSanitizer.sanitize(input);
@@ -307,7 +309,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testCrash1() {
+  public final void testCrash1() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     String input = "?\u0000\u0000\u0000{{\u0000\ufffd\u0003]ve{R]\u00000\ufffd\ufffd\u0016&e{\u0003]\ufffda<!.b<!<!c\u00005{281<\u0000.{t\u0001\ufffd5\ufffd{515\r[\u0000\u0000\u0000~~-008127322242\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd23759,551x\u0000\u00006{281<\u0000.{t\u0001\ufffd5\ufffd{5\ufffd\ufffd0\ufffd15\r[\u0000\u0000\u0000~~-0081273222428822883223759,\ufffd";
     String want = "{\"\":{},\"ve\":{\"R\":null},\"0\":\"e\",\"\":{},\"a<!.b<!<!c\":5,\"\":{\"281\":0.0,\"\":{\"t\":5,\"\":{\"515\"\r:[-8127322242,23759,551,6,{\"281\":0.0,\"\":{\"t\":5,\"\":{\"5\":0,\"15\"\r:[-81273222428822883223759]}}}]}}}}";
@@ -316,7 +318,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testDisallowedSubstrings() {
+  public final void testDisallowedSubstrings() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     String[] inputs = {
             "x<\\script>",
@@ -335,17 +337,17 @@ public final class JsonSanitizerTest extends TestCase {
     };
     for (String input : inputs) {
       String out = JsonSanitizer.sanitize(input).toLowerCase(Locale.ROOT);
-      assertFalse(out, out.contains("<!--"));
-      assertFalse(out, out.contains("-->"));
-      assertFalse(out, out.contains("<script"));
-      assertFalse(out, out.contains("</script"));
-      assertFalse(out, out.contains("]]>"));
-      assertFalse(out, out.contains("<![cdata["));
+      assertFalse(out.contains("<!--"), out);
+      assertFalse(out.contains("-->"), out);
+      assertFalse(out.contains("<script"), out);
+      assertFalse(out.contains("</script"), out);
+      assertFalse(out.contains("]]>"), out);
+      assertFalse(out.contains("<![cdata["), out);
     }
   }
 
   @Test
-  public static final void testXssPayload() {
+  public final void testXssPayload() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     String input = "x</\\script>u\\u\\uu\ufffd\ufffd\\u7u\\u\\u\\u\ufffdu<\\script>5+alert(1)//";
     assertEquals(
@@ -355,7 +357,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testInvalidOutput() {
+  public final void testInvalidOutput() {
     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
     String input = "\u0010{'\u0000\u0000'\"\u0000\"{.\ufffd-0X29295909049550970,\n\n0";
     String want = "{\"\\u0000\\u0000\":\"\\u0000\",\"\":{\"0\":-47455995597866469744,\n\n\"0\":null}}";
@@ -364,7 +366,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testBadNumber() {
+  public final void testBadNumber() {
     String input = "¶0x.\\蹃4\\À906";
     String want = "0.0";
     String got = JsonSanitizer.sanitize(input);
@@ -372,7 +374,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testDashDashGtEscaped() {
+  public final void testDashDashGtEscaped() {
     String input = "'->??-\\->";
     String want = "\"->??--\\u003e\"";
     String got1 = JsonSanitizer.sanitize(input);
@@ -382,7 +384,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testDashDashGtUEscaped() {
+  public final void testDashDashGtUEscaped() {
     String input = "'.\\u002D->'";
     String want = "\".\\u002D-\\u003e\"";
     String got1 = JsonSanitizer.sanitize(input);
@@ -392,7 +394,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testEscHtmlCommentClose() {
+  public final void testEscHtmlCommentClose() {
     String input = "x--\\>";
     String want = "\"x--\\u003e\"";
     String got1 = JsonSanitizer.sanitize(input);
@@ -402,7 +404,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testSanitizeCharSequence() {
+  public final void testSanitizeCharSequence() {
     // Issue #25
     StringBuilder clean = new StringBuilder("{\"a\":[1,2]}");
     assertSame(clean, sanitize(clean));
@@ -412,7 +414,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testSanitizeReader() throws IOException {
+  public final void testSanitizeReader() throws IOException {
     // Issue #18
     StringBuilder out = new StringBuilder("prefix:");
     sanitize(new StringReader("{a:'b'}"), out);
@@ -432,7 +434,7 @@ public final class JsonSanitizerTest extends TestCase {
   }
 
   @Test
-  public static final void testSanitizeStreams() throws IOException {
+  public final void testSanitizeStreams() throws IOException {
     // Issue #18
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     sanitize(

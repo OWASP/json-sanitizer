@@ -14,6 +14,8 @@
 
 package com.google.json;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -23,8 +25,7 @@ import java.util.Random;
 
 import javax.annotation.Nullable;
 
-import junit.framework.TestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 
 /**
@@ -32,9 +33,9 @@ import org.junit.Test;
  * boundary conditions in the JSON parser.
  */
 @SuppressWarnings("javadoc")
-public final class FuzzyTest extends TestCase {
+public final class FuzzyTest {
   @Test
-  public static final void testSanitizerLikesFuzzyWuzzyInputs()
+  public final void testSanitizerLikesFuzzyWuzzyInputs()
   throws Throwable {
     int nRuns = 10000;
     long seed;
@@ -88,8 +89,8 @@ public final class FuzzyTest extends TestCase {
           System.err.println("Before: " + excerpt(sanitized0, commonPrefixLen, right0));
           System.err.println("After:  " + excerpt(sanitized0, commonPrefixLen, right1));
         }
-        assertEquals(fuzzyWuzzyString + "  =>  " + sanitized0, sanitized0,
-                     sanitized1);
+        assertEquals(sanitized0, sanitized1,
+                     fuzzyWuzzyString + "  =>  " + sanitized0);
       } catch (Throwable th) {
         System.err.println("Failed on `" + fuzzyWuzzyString + "`");
         hexDump(fuzzyWuzzyString.getBytes("UTF16"), System.err);
