@@ -30,11 +30,15 @@
 // Inputs are digested in blocks of 4096: an "in" digest of the inputs and an "out" digest of the
 // seven outputs, so a mismatch names the block and says whether inputs or outputs differ.
 //
-// Java 8 source level, no dependencies beyond the sanitizer classes.
-//   javac --release 8 -encoding UTF-8 -cp <sanitizer classes> -d out GoldenCorpus.java
-//   java -cp out:<sanitizer classes> GoldenCorpus record <digests-file> [--dump <gz-file>] [--provenance <text>]
-//   java -cp out:<sanitizer classes> GoldenCorpus verify <digests-file>
-//   java -cp out:<sanitizer classes> GoldenCorpus dump <from-index> <to-index> <file>
+// Java 8 source level, no dependencies beyond the sanitizer classes. GoldenCorpusTest runs
+// verify against src/test/resources/com/google/json/golden-digests.txt on every build; after
+// `mvn test-compile` the tool also runs by hand:
+//   java -cp target/test-classes:target/classes com.google.json.GoldenCorpus record <digests-file> [--dump <gz-file>] [--provenance <text>]
+//   java -cp target/test-classes:target/classes com.google.json.GoldenCorpus verify <digests-file>
+//   java -cp target/test-classes:target/classes com.google.json.GoldenCorpus dump <from-index> <to-index> <file>
+// A re-recording must come from the legacy build's classes, never from the build under test.
+
+package com.google.json;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -58,9 +62,6 @@ import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.zip.GZIPOutputStream;
-
-import com.google.json.EvalMinifier;
-import com.google.json.JsonSanitizer;
 
 public final class GoldenCorpus {
   static final String FORMAT = "json-sanitizer golden corpus v1";

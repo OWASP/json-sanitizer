@@ -78,12 +78,6 @@ jobs:
           echo "$jar: class file major versions: $majors"
           [ "$majors" = "52" ]
 
-      - name: Replay the golden corpus on JDK ${{ matrix.test-jdk }}
-        run: |
-          mkdir -p target/golden
-          "$JAVA_HOME/bin/javac" --release 8 -encoding UTF-8 -cp target/classes -d target/golden .github/golden/GoldenCorpus.java
-          "${{ steps.test-jvm.outputs.java }}" -cp target/golden:target/classes GoldenCorpus verify .github/golden/golden-digests.txt
-
       - name: Keep the test reports of a failed leg
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
