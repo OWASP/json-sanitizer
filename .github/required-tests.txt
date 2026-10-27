@@ -44,3 +44,4 @@ com.google.json.StreamCharacterizationTest#testSurrogatePairSplitAtTheReadBounda
 com.google.json.StreamCharacterizationTest#testMalformedUtf8AtTheByteBufferBoundary
 com.google.json.StreamCharacterizationTest#testOneCharOrByteAtATime
 com.google.json.JsonSanitizerFuzzTest#testStrictJsonCheck
+com.google.json.SecurityFixesTest#testSec001LongHexAndOctalLiteralsTakeLinearTime

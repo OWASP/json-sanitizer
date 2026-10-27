@@ -1070,19 +1070,38 @@ public final class JsonSanitizer {
         // Putting out the underflowed value is the least bad option.
         elide(pos, intEnd);
 
-        String digits = jsonish.substring(firstDigitIndex, intEnd);
+        // Leading zeroes do not change the value.
+        int firstSignificantIndex = firstDigitIndex;
+        while (firstSignificantIndex < intEnd
+               && jsonish.charAt(firstSignificantIndex) == '0') {
+          ++firstSignificantIndex;
+        }
+        String digits = jsonish.substring(firstSignificantIndex, intEnd);
 
         int nDigits = digits.length();
         int base = probableBase > maxDigVal ? probableBase : maxDigVal > 10 ? 16 : 10;
         if (nDigits == 0) {
           sanitizedJson.append('0');
+        } else if (base == 10) {
+          // Already decimal, so copy rather than round-tripping through
+          // BigInteger which takes time quadratic in nDigits.
+          sanitizedJson.append(digits);
         } else if (DIGITS_BY_BASE_THAT_FIT_IN_63B[base] >= nDigits) {
           long value = Long.parseLong(digits, base);
           sanitizedJson.append(value);
-        } else {
+        } else if (nDigits <= MAX_EXACT_REENCODED_DIGITS) {
           // If there are lots of digits, we need to reencode using a BigInteger
           BigInteger value = new BigInteger(digits, base);
           sanitizedJson.append(value);
+        } else {
+          // BigInteger parsing is quadratic in nDigits, so an attacker could
+          // use a long literal to tie up the sanitizer.  Any value this large
+          // is at least 8**MAX_EXACT_REENCODED_DIGITS, far past the largest
+          // double, so JS evaluates it to Infinity, as it does 1e999.
+          // A fraction or exponent cannot follow 1e999, so elide any.
+          sanitizedJson.append("1e999");
+          elide(intEnd, end);
+          return;
         }
       }
     }
@@ -1430,6 +1449,12 @@ public final class JsonSanitizer {
           21 /* base 8  */, 19, 18 /* base 10 */, 18, 17, 17, 16, 16,
           15 /* base 16 */,
   };
+
+  /**
+   * The most significant octal or hex digits that are reencoded exactly as
+   * decimal.  Enough for any value that fits in a double.
+   */
+  private static final int MAX_EXACT_REENCODED_DIGITS = 1024;
 
   /**
    * Looks for a literal character or escape sequence at left in s.
