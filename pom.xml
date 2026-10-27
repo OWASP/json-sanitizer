@@ -263,6 +263,20 @@ encoding and make it easier to embed your JSON in HTML and XML.
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Coverage-guided fuzzing; replays its seed inputs in every test run. -->
+    <dependency>
+      <groupId>com.code-intelligence</groupId>
+      <artifactId>jazzer-junit</artifactId>
+      <version>0.30.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- A strict RFC 8259 parser for the fuzz target's validity check. 2.x: 3.x requires Java 17. -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.22.4</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <reporting>
