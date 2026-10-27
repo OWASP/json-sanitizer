@@ -113,7 +113,7 @@ Build JDK 21 for every leg; the test JVM varies through `-Djvm`; seed `6a736f6e2
 
 ## Jazzer's first finding
 
-The sanitizer keeps an escaped lone surrogate (`\uDDDD`) and escapes a raw one; Jackson rejects such an escape in an object key but accepts it in a value. RFC 8259 §7 allows it (§8.2 only warns), so it is **not a sanitizer defect under the brief's criterion**. Owner decision: the check is RFC 8259 as written; the oracle swaps `\uD800`-`\uDFFF` escapes for `�` before parsing (grammar-preserving, self-tested in `testStrictJsonCheck`), and the input stays as two seeds. Whether output should avoid lone surrogates for I-JSON (RFC 7493) is the proposed Q13 in the brief.
+The sanitizer keeps an escaped lone surrogate (`\uDDDD`) and escapes a raw one; Jackson rejects such an escape in an object key but accepts it in a value. RFC 8259 §7 allows it (§8.2 only warns), so it is **not a sanitizer defect under the brief's criterion**. Owner decision: the check is RFC 8259 as written; the oracle swaps `\uD800`-`\uDFFF` escapes for `\uFFFD` before parsing (grammar-preserving, self-tested in `testStrictJsonCheck`), and the input stays as two seeds. Whether output should avoid lone surrogates for I-JSON (RFC 7493) is the proposed Q13 in the brief.
 
 ## Residual manual deltas
 

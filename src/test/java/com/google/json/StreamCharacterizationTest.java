@@ -115,7 +115,7 @@ public final class StreamCharacterizationTest {
     in[READ_BUFFER + 2] = ']';
     StringBuilder want = new StringBuilder("[\"");
     for (int i = 2; i < READ_BUFFER - 1; ++i) { want.append('a'); }
-    want.append("�\"]");
+    want.append("\ufffd\"]");
     assertEquals(want.toString(), sanitizeBytes(in));
   }
 
