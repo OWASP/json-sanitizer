@@ -14,9 +14,11 @@
 
 package com.google.json;
 
-import junit.framework.TestCase;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.json.EvalMinifier.NameGenerator;
 
@@ -25,15 +27,15 @@ import java.util.HashSet;
 import java.util.Set;
 
 @SuppressWarnings("javadoc")
-public final class EvalMinifierTest extends TestCase {
+public final class EvalMinifierTest {
 
   private static void assertMinified(String golden, String input) {
     String actual = EvalMinifier.minify(input);
-    assertEquals(input, golden, actual);
+    assertEquals(golden, actual, input);
   }
 
   @Test
-  public static final void testMinify() {
+  public final void testMinify() {
     assertMinified("null", "null");
     assertMinified("[null,null]", "[null,null]");
     assertMinified("[null,null,null,null]", "[null,null,null,null]");
@@ -73,7 +75,7 @@ public final class EvalMinifierTest extends TestCase {
   }
 
   @Test
-  public static final void testNameGenerator() {
+  public final void testNameGenerator() {
     NameGenerator ng = new NameGenerator();
     assertEquals("a", ng.next());
     assertEquals("b", ng.next());
@@ -102,16 +104,16 @@ public final class EvalMinifierTest extends TestCase {
   }
 
   @Test
-  public static final void testReservedKeywordsSorted() {
+  public final void testReservedKeywordsSorted() {
     String[][] keywords = EvalMinifier.RESERVED_KEYWORDS;
     for (int len = 0; len < keywords.length; ++len) {
       String[] row = keywords[len];
       for (int i = 0; i < row.length; ++i) {
-        assertEquals(row[i], len, row[i].length());
+        assertEquals(len, row[i].length(), row[i]);
         if (i > 0) {
-          assertTrue(row[i - 1] + " < " + row[i], row[i - 1].compareTo(row[i]) < 0);
+          assertTrue(row[i - 1].compareTo(row[i]) < 0, row[i - 1] + " < " + row[i]);
         }
-        assertTrue(row[i], Arrays.binarySearch(row, row[i]) >= 0);
+        assertTrue(Arrays.binarySearch(row, row[i]) >= 0, row[i]);
       }
     }
   }

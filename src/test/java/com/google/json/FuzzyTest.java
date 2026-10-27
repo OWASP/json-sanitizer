@@ -14,6 +14,8 @@
 
 package com.google.json;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -23,8 +25,7 @@ import java.util.Random;
 
 import javax.annotation.Nullable;
 
-import junit.framework.TestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 
 /**
@@ -32,9 +33,9 @@ import org.junit.Test;
  * boundary conditions in the JSON parser.
  */
 @SuppressWarnings("javadoc")
-public final class FuzzyTest extends TestCase {
+public final class FuzzyTest {
   @Test
-  public static final void testSanitizerLikesFuzzyWuzzyInputs()
+  public final void testSanitizerLikesFuzzyWuzzyInputs()
   throws Throwable {
     int nRuns = 10000;
     long seed;
@@ -43,7 +44,7 @@ public final class FuzzyTest extends TestCase {
       // tests.
       String seedString = System.getProperty("fuzz.seed", null);
       if (seedString != null) {
-        seed = Long.parseLong(seedString, 16);
+        seed = parseSeed(seedString);
       } else {
         // Use java.util.Random's default constructor to generate a seed since
         // it does a pretty good job of making a good non-crypto-strong seed.
@@ -86,10 +87,10 @@ public final class FuzzyTest extends TestCase {
 
           System.err.println("Difference at " + commonPrefixLen + " to -" + commonSuffixLen);
           System.err.println("Before: " + excerpt(sanitized0, commonPrefixLen, right0));
-          System.err.println("After:  " + excerpt(sanitized0, commonPrefixLen, right1));
+          System.err.println("After:  " + excerpt(sanitized1, commonPrefixLen, right1));
         }
-        assertEquals(fuzzyWuzzyString + "  =>  " + sanitized0, sanitized0,
-                     sanitized1);
+        assertEquals(sanitized0, sanitized1,
+                     fuzzyWuzzyString + "  =>  " + sanitized0);
       } catch (Throwable th) {
         System.err.println("Failed on `" + fuzzyWuzzyString + "`");
         hexDump(fuzzyWuzzyString.getBytes("UTF16"), System.err);
@@ -97,6 +98,23 @@ public final class FuzzyTest extends TestCase {
         throw th;
       }
       if (--nRuns <= 0) { break; }
+    }
+  }
+
+  /**
+   * Parses a seed as printed above. {@code Long.toHexString} prints a negative
+   * seed as 16 unsigned hex digits, so it is parsed unsigned (RULE-063).
+   */
+  static long parseSeed(String hex) {
+    return Long.parseUnsignedLong(hex, 16);
+  }
+
+  @Test
+  public final void testPrintedSeedsReplay() {
+    // RULE-063: the seed of the legacy baseline run, which Long.parseLong rejected.
+    assertEquals(0xea41f76fb21e5107L, parseSeed("ea41f76fb21e5107"));
+    for (long seed : new long[] { 0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE, 0x6a736f6e2d73616eL }) {
+      assertEquals(seed, parseSeed(Long.toHexString(seed)));
     }
   }
 
@@ -129,9 +147,9 @@ public final class FuzzyTest extends TestCase {
     }
 
     return s.substring(leftIncl, rightIncl)
+            .replace("\\", "\\\\")
             .replace("\r", "\\r")
-            .replace("\n", "\\n")
-            .replace("\\", "\\\\");
+            .replace("\n", "\\n");
   }
 }
 

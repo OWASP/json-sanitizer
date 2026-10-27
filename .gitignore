@@ -15,3 +15,6 @@ target
 # Emacs
 *~
 \#*\#
+
+# Jazzer
+.cifuzz-corpus
