@@ -83,6 +83,8 @@ public final class EvalMinifier {
             break;
           }
         }
+        // A trailing backslash would otherwise step past the end of input.
+        if (tokEnd > n) { tokEnd = n; }
       } else if (isLetterOrNumberChar(ch)) {
         tokEnd = i + 1;
         while (tokEnd < n && isLetterOrNumberChar(json.charAt(tokEnd))) {
@@ -104,7 +106,7 @@ public final class EvalMinifier {
       // substituted with an identifier.
       // In JavaScript, { a: 1 } is the same as { "a": 1 } regardless of
       // what the identifier "a" resolves to.
-      if (nextNonWhitespace == n || ':' != json.charAt(nextNonWhitespace)
+      if ((nextNonWhitespace == n || ':' != json.charAt(nextNonWhitespace))
           && tokEnd - i >= 4) {
         Token tok = new Token(i, tokEnd, json);
         @Nullable Token last = pool.put(tok, tok);
@@ -137,6 +139,9 @@ public final class EvalMinifier {
         for (Token t = tok; t != null; t = t.prev) {
           dupes.add(t);
         }
+      } else {
+        // Not worth a parameter, so don't emit a name or argument for it.
+        values.remove();
       }
     }
     if (potentialSavings <= BOILERPLATE_COST + SAVINGS_THRESHOLD) {
@@ -282,14 +287,15 @@ public final class EvalMinifier {
   }
 
 
-  private static final String[][] RESERVED_KEYWORDS = {
+  // Indexed by length; each row must stay sorted for Arrays.binarySearch.
+  static final String[][] RESERVED_KEYWORDS = {
     {},
     {},
     {"as", "do", "if", "in", "of"},
     {"for", "get", "let", "new", "set", "try", "var"},
     {"case", "else", "enum", "eval", "from", "null", "this", "true", "void", "with"},
     {"async", "await", "break", "catch", "class", "const", "false", "super", "throw", "while", "yield"},
-    {"delete", "export", "import", "public", "return", "switch", "static", "target", "typeof"},
+    {"delete", "export", "import", "public", "return", "static", "switch", "target", "typeof"},
     {"default", "extends", "finally", "package", "private"},
     {"continue", "debugger", "function"},
     {"arguments", "interface", "protected"},
