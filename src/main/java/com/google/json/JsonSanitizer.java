@@ -106,6 +106,8 @@ public final class JsonSanitizer {
    *
    * @param jsonish JSON-like content.
    * @return embeddable JSON
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@link #DEFAULT_NESTING_DEPTH}.
    */
   public static String sanitize(String jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
@@ -118,6 +120,8 @@ public final class JsonSanitizer {
    * @param jsonish JSON-like content.
    * @param maximumNestingDepth maximum nesting depth.
    * @return embeddable JSON
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@code maximumNestingDepth}.
    */
   public static String sanitize(String jsonish, int maximumNestingDepth) {
     JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
@@ -253,6 +257,9 @@ public final class JsonSanitizer {
             state = requireValueState(i, state, false);
             if (isMap == null) {
               isMap = new boolean[maximumNestingDepth];
+            }
+            if (bracketDepth >= maximumNestingDepth) {
+              throw new JsonNestingDepthException(maximumNestingDepth, i);
             }
             boolean map = ch == '{';
             isMap[bracketDepth] = map;

@@ -185,12 +185,47 @@ public final class JsonSanitizerTest extends TestCase {
     boolean exceptionIfTooMuchNesting = false;
     try {
       assertSanitized(sanitizedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH);
-    } catch (ArrayIndexOutOfBoundsException e) {
+    } catch (JsonNestingDepthException e) {
       Logger.getAnonymousLogger().log(Level.FINEST, "Expected exception in testing maximum nesting level", e);
+      assertEquals(DEFAULT_NESTING_DEPTH, e.getMaximumNestingDepth());
       exceptionIfTooMuchNesting = true;
     }
     assertTrue("Expecting failure for too nested JSON", exceptionIfTooMuchNesting);
     assertSanitized(sanitizedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH + 1);
+  }
+
+  @Test
+  public static final void testExcessiveNestingThrowsSpecificException() {
+    // Issue #35: unclosed, closed, and mixed deep nesting.
+    String[] inputs = {
+      repeat("[", 5000),
+      repeat("[", 65) + repeat("]", 65),
+      repeat("[{\"a\":", 33),
+    };
+    for (String input : inputs) {
+      try {
+        sanitize(input);
+        fail("Expected JsonNestingDepthException");
+      } catch (JsonNestingDepthException e) {
+        assertEquals(DEFAULT_NESTING_DEPTH, e.getMaximumNestingDepth());
+      }
+    }
+    // Existing handlers that catch the old exception type still work.
+    try {
+      sanitize(repeat("{", 100), 10);
+      fail("Expected ArrayIndexOutOfBoundsException");
+    } catch (ArrayIndexOutOfBoundsException e) {
+      assertTrue(e instanceof JsonNestingDepthException);
+    }
+    // Exactly at the limit is fine.
+    assertSanitized(
+        repeat("[", DEFAULT_NESTING_DEPTH) + repeat("]", DEFAULT_NESTING_DEPTH));
+  }
+
+  private static String repeat(String s, int n) {
+    StringBuilder sb = new StringBuilder(s.length() * n);
+    for (int i = 0; i < n; ++i) { sb.append(s); }
+    return sb.toString();
   }
 
   @Test
