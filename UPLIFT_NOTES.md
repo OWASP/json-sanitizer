@@ -79,7 +79,7 @@ The critic's "one thing": the post-`verify` assertion (H1). It is in the workflo
 # Phase 2: test harness (JUnit 5, golden corpus, reproducible fuzzing)
 
 - **Date:** 2026-10-27
-- **Commits:** `d157b20`..`76f7bc7` on top of `475f264` (the end of Phase 1). Entry criteria met first: Phase 1's CI ran green on GitHub ([run 40588718585](https://github.com/OWASP/json-sanitizer/actions/runs/40588718585), branch `java8-toolchain-and-ci`).
+- **Commits:** `d157b20`..`92dc76b` on top of `475f264` (the end of Phase 1); pushed as branch `junit5-golden-corpus-jazzer`, stacked on `java8-toolchain-and-ci`. Entry criteria met first: Phase 1's CI ran green on GitHub ([run 40588718585](https://github.com/OWASP/json-sanitizer/actions/runs/40588718585), branch `java8-toolchain-and-ci`).
 - **Scope:** `pom.xml` (test dependencies only), `src/test/**`, `.github/**`, `.gitattributes`, `.gitignore`. **No file under `src/main/` changed** (`git diff 475f264 -- src/main` is empty).
 - **Playbook:** `analysis/json-sanitizer/PLAYBOOK.md` section 6.
 
@@ -109,6 +109,8 @@ Build JDK 21 for every leg; the test JVM varies through `-Djvm`; seed `6a736f6e2
 
 50 = the 28 baseline tests (same names) + 14 new named tests + 8 Jazzer seed replays.
 
+**GitHub Actions:** [run 40599699046](https://github.com/OWASP/json-sanitizer/actions/runs/40599699046) and, after the pipefail fix, [run 40600511953](https://github.com/OWASP/json-sanitizer/actions/runs/40600511953): every Temurin leg (1.8.0_504, 11.0.32.1, 17.0.20.1, 21.0.12.1, 25.0.4.1) ran 50 tests with 42 of 42 required tests unskipped, `StreamCharacterizationTest` 5/5 and the corpus byte-identical; the `fuzz` job ran 939,862 and 1,060,191 inputs in 301 s each, no finding.
+
 **Fuzzing (JDK 21, local, 5 minutes each):** the first campaign found `{"\uDDDD":1}` after 83 s (below); after the owner's decision a full campaign ran 2,834,362 inputs and the widened target 1,069,698 inputs, both with no finding.
 
 ## Jazzer's first finding
@@ -117,7 +119,7 @@ The sanitizer keeps an escaped lone surrogate (`\uDDDD`) and escapes a raw one; 
 
 ## Residual manual deltas
 
-- **Two exit criteria wait for CI:** the stream tests "pass on every CI leg" and "a CI job runs [Jazzer] for a fixed time with zero findings" need a GitHub run of this code. Local proof only so far.
+- **Step shell without pipefail (found and fixed):** the first CI run showed the runner's default step shell is `bash -e`, so the fuzz step's `mvn | tee` exit status was tee's and a finding after 280 s would have passed. `92dc76b` sets `defaults.run.shell: bash` (`-eo pipefail` on every step, confirmed in [run 40600511953](https://github.com/OWASP/json-sanitizer/actions/runs/40600511953)). That run's own result was read from its log (`Tests run: 9, Failures: 0`, `BUILD SUCCESS`), not from the job status.
 - **Dynamic agent warning on JDK 21+:** Jazzer's agent loads dynamically (`A Java agent has been loaded dynamically`). `-XX:+EnableDynamicAgentLoading` would silence it but does not exist on Java 8, so the forked JVM of the 8 leg would not start. A future JDK may disallow dynamic loading; revisit then.
 - **Local seed replay differs from CI:** after a local fuzzing run, `mvn test` also replays the git-ignored `.cifuzz-corpus` (over 1,000 entries); CI never has it. Delete it before a counting proof (done for the table above). The corpus is deliberately not committed: every CI fuzz run starts from the seeds.
 - **Fuzz budget (Q11):** the `fuzz` job adds about 6 minutes of runner time per push and pull request; the organization's budget limit is still unknown.
