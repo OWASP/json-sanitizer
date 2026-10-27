@@ -1,4 +1,4 @@
-# json-sanitizer [<img src="https://travis-ci.org/OWASP/json-sanitizer.svg">](https://travis-ci.org/OWASP/json-sanitizer) [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/json-sanitizer.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:json-sanitizer)
+# json-sanitizer [![CI](https://github.com/OWASP/json-sanitizer/actions/workflows/ci.yml/badge.svg)](https://github.com/OWASP/json-sanitizer/actions/workflows/ci.yml) [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/json-sanitizer.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:json-sanitizer)
 
 
 Given JSON-like content, The JSON Sanitizer converts it to valid JSON.

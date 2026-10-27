@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test on JDK ${{ matrix.test-jdk }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test-jdk: [8, 11, 17, 21, 25]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The test JVM is set up first and the build JDK last: the last setup-java call owns JAVA_HOME and PATH.
+      - name: Set up test JDK ${{ matrix.test-jdk }}
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.test-jdk }}
+
+      - name: Set up build JDK 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Locate the test JVM
+        id: test-jvm
+        run: |
+          var="JAVA_HOME_${{ matrix.test-jdk }}_X64"
+          java="${!var}/bin/java"
+          "$java" -version
+          echo "java=$java" >> "$GITHUB_OUTPUT"
+
+      - name: Build on JDK 21, run the tests on JDK ${{ matrix.test-jdk }}
+        run: mvn -B -ntp clean verify -Djvm="${{ steps.test-jvm.outputs.java }}"
+
+      - name: Check the bytecode level is Java 8 (class file major version 52)
+        run: |
+          status=0
+          for c in $(find target/classes -name '*.class'); do
+            major=$(javap -v "$c" | sed -n 's/^ *major version: //p')
+            if [ "$major" != "52" ]; then echo "$c: major version $major"; status=1; fi
+          done
+          exit $status
+
+      - name: Replay the golden corpus on JDK ${{ matrix.test-jdk }}
+        run: |
+          mkdir -p target/golden
+          javac --release 8 -encoding UTF-8 -cp target/classes -d target/golden .github/golden/GoldenCorpus.java
+          "${{ steps.test-jvm.outputs.java }}" -cp target/golden:target/classes GoldenCorpus verify .github/golden/golden-digests.txt
