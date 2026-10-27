@@ -58,6 +58,12 @@ import java.nio.charset.Charset;
  * The sanitizer fixes missing punctuation, end quotes, and mismatched or
  * missing close brackets. If an input contains only white-space then the valid
  * JSON string {@code null} is substituted.
+ * <p>
+ * Brackets may nest at most {@link #DEFAULT_NESTING_DEPTH} levels deep, or as
+ * set by the {@code maximumNestingDepth} parameter.  Any array or object that
+ * would nest more deeply is replaced with {@code null}, so
+ * {@code [[[1]],2]} sanitized with a maximum depth of 2 becomes
+ * {@code [[null],2]}.  The sanitizer does not throw on over-deep input.
  *
  * <h2>Output</h2>
  * The output is well-formed JSON as defined by
@@ -114,8 +120,6 @@ public final class JsonSanitizer {
    *
    * @param jsonish JSON-like content.
    * @return embeddable JSON
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@link #DEFAULT_NESTING_DEPTH}.
    */
   public static String sanitize(String jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
@@ -128,8 +132,6 @@ public final class JsonSanitizer {
    * @param jsonish JSON-like content.
    * @param maximumNestingDepth maximum nesting depth.
    * @return embeddable JSON
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@code maximumNestingDepth}.
    */
   public static String sanitize(String jsonish, int maximumNestingDepth) {
     JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
@@ -148,8 +150,6 @@ public final class JsonSanitizer {
    * @param jsonish JSON-like content.
    * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
    *     it is returned unchanged.
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@link #DEFAULT_NESTING_DEPTH}.
    */
   public static CharSequence sanitize(CharSequence jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
@@ -163,8 +163,6 @@ public final class JsonSanitizer {
    * @param maximumNestingDepth maximum nesting depth.
    * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
    *     it is returned unchanged.
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@code maximumNestingDepth}.
    */
   public static CharSequence sanitize(
       CharSequence jsonish, int maximumNestingDepth) {
@@ -188,8 +186,6 @@ public final class JsonSanitizer {
    * @param in JSON-like content.
    * @param out receives embeddable JSON.
    * @throws IOException if reading {@code in} or writing {@code out} fails.
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@link #DEFAULT_NESTING_DEPTH}.  Nothing is written to {@code out}.
    */
   public static void sanitize(Reader in, Appendable out) throws IOException {
     sanitize(in, out, DEFAULT_NESTING_DEPTH);
@@ -203,8 +199,6 @@ public final class JsonSanitizer {
    * @param out receives embeddable JSON.
    * @param maximumNestingDepth maximum nesting depth.
    * @throws IOException if reading {@code in} or writing {@code out} fails.
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@code maximumNestingDepth}.  Nothing is written to {@code out}.
    */
   public static void sanitize(
       Reader in, Appendable out, int maximumNestingDepth) throws IOException {
@@ -231,8 +225,6 @@ public final class JsonSanitizer {
    * @param in UTF-8 encoded JSON-like content.
    * @param out receives UTF-8 encoded embeddable JSON.
    * @throws IOException if reading {@code in} or writing {@code out} fails.
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@link #DEFAULT_NESTING_DEPTH}.  Nothing is written to {@code out}.
    */
   public static void sanitize(InputStream in, OutputStream out)
       throws IOException {
@@ -247,8 +239,6 @@ public final class JsonSanitizer {
    * @param out receives UTF-8 encoded embeddable JSON.
    * @param maximumNestingDepth maximum nesting depth.
    * @throws IOException if reading {@code in} or writing {@code out} fails.
-   * @throws JsonNestingDepthException if brackets nest more deeply than
-   *     {@code maximumNestingDepth}.  Nothing is written to {@code out}.
    */
   public static void sanitize(
       InputStream in, OutputStream out, int maximumNestingDepth)
@@ -390,7 +380,13 @@ public final class JsonSanitizer {
               isMap = new boolean[maximumNestingDepth];
             }
             if (bracketDepth >= maximumNestingDepth) {
-              throw new JsonNestingDepthException(maximumNestingDepth, i);
+              // Too deep.  Replace the whole array or object with null
+              // instead of failing, so hostile input cannot cause an
+              // exception, and resume after its close bracket.
+              int valueEnd = endOfBracketedValue(i);
+              replace(i, valueEnd, "null");
+              i = valueEnd - 1;
+              break;
             }
             boolean map = ch == '{';
             isMap[bracketDepth] = map;
@@ -473,34 +469,7 @@ public final class JsonSanitizer {
             // Skip over JS-style comments since people like inserting them into
             // data files and getting huffy with Crockford when he says no to
             // versioning JSON to allow ignorable tokens.
-            int end = i + 1;
-            if (i + 1 < n) {
-              switch (jsonish.charAt(i + 1)) {
-                case '/':
-                  end = n;  // Worst case.
-                  for (int j = i + 2; j < n; ++j) {
-                    char cch = jsonish.charAt(j);
-                    if (cch == '\n' || cch == '\r'
-                        || cch == '\u2028' || cch == '\u2029') {
-                      end = j + 1;
-                      break;
-                    }
-                  }
-                  break;
-                case '*':
-                  end = n;
-                  if (i + 3 < n) {
-                    for (int j = i + 2;
-                         (j = jsonish.indexOf('/', j + 1)) >= 0;) {
-                      if (jsonish.charAt(j - 1) == '*') {
-                        end = j + 1;
-                        break;
-                      }
-                    }
-                  }
-                  break;
-              }
-            }
+            int end = endOfComment(i);
             elide(i, end);
             i = end - 1;
             break;
@@ -904,6 +873,73 @@ public final class JsonSanitizer {
   private void replace(int start, int end, String s) {
     elide(start, end);
     sanitizedJson.append(s);
+  }
+
+  /**
+   * The position past the end of the JS comment starting at
+   * {@code jsonish.charAt(start)}, or {@code start + 1} if the {@code '/'}
+   * there does not start a comment.
+   */
+  private int endOfComment(int start) {
+    int n = jsonish.length();
+    int end = start + 1;
+    if (start + 1 < n) {
+      switch (jsonish.charAt(start + 1)) {
+        case '/':
+          end = n;  // Worst case.
+          for (int j = start + 2; j < n; ++j) {
+            char cch = jsonish.charAt(j);
+            if (cch == '\n' || cch == '\r'
+                || cch == '\u2028' || cch == '\u2029') {
+              end = j + 1;
+              break;
+            }
+          }
+          break;
+        case '*':
+          end = n;
+          if (start + 3 < n) {
+            for (int j = start + 2;
+                 (j = jsonish.indexOf('/', j + 1)) >= 0;) {
+              if (jsonish.charAt(j - 1) == '*') {
+                end = j + 1;
+                break;
+              }
+            }
+          }
+          break;
+      }
+    }
+    return end;
+  }
+
+  /**
+   * The position past the close bracket that matches the open bracket at
+   * {@code jsonish.charAt(start)}, or the end of input if it is never closed.
+   * Brackets inside strings and comments are ignored, and any close bracket
+   * matches any open bracket, as in {@link #sanitize()}.
+   */
+  private int endOfBracketedValue(int start) {
+    int n = jsonish.length();
+    int depth = 0;
+    for (int i = start; i < n; ++i) {
+      switch (jsonish.charAt(i)) {
+        case '"': case '\'':
+          i = endOfQuotedString(jsonish, i) - 1;
+          break;
+        case '/':
+          i = endOfComment(i) - 1;
+          break;
+        case '{': case '[':
+          ++depth;
+          break;
+        case '}': case ']':
+          if (--depth == 0) { return i + 1; }
+          break;
+        default: break;
+      }
+    }
+    return n;
   }
 
   /**
