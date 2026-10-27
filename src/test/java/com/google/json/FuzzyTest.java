@@ -44,7 +44,7 @@ public final class FuzzyTest {
       // tests.
       String seedString = System.getProperty("fuzz.seed", null);
       if (seedString != null) {
-        seed = Long.parseLong(seedString, 16);
+        seed = parseSeed(seedString);
       } else {
         // Use java.util.Random's default constructor to generate a seed since
         // it does a pretty good job of making a good non-crypto-strong seed.
@@ -87,7 +87,7 @@ public final class FuzzyTest {
 
           System.err.println("Difference at " + commonPrefixLen + " to -" + commonSuffixLen);
           System.err.println("Before: " + excerpt(sanitized0, commonPrefixLen, right0));
-          System.err.println("After:  " + excerpt(sanitized0, commonPrefixLen, right1));
+          System.err.println("After:  " + excerpt(sanitized1, commonPrefixLen, right1));
         }
         assertEquals(sanitized0, sanitized1,
                      fuzzyWuzzyString + "  =>  " + sanitized0);
@@ -98,6 +98,23 @@ public final class FuzzyTest {
         throw th;
       }
       if (--nRuns <= 0) { break; }
+    }
+  }
+
+  /**
+   * Parses a seed as printed above. {@code Long.toHexString} prints a negative
+   * seed as 16 unsigned hex digits, so it is parsed unsigned (RULE-063).
+   */
+  static long parseSeed(String hex) {
+    return Long.parseUnsignedLong(hex, 16);
+  }
+
+  @Test
+  public final void testPrintedSeedsReplay() {
+    // RULE-063: the seed of the legacy baseline run, which Long.parseLong rejected.
+    assertEquals(0xea41f76fb21e5107L, parseSeed("ea41f76fb21e5107"));
+    for (long seed : new long[] { 0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE, 0x6a736f6e2d73616eL }) {
+      assertEquals(seed, parseSeed(Long.toHexString(seed)));
     }
   }
 
@@ -130,9 +147,9 @@ public final class FuzzyTest {
     }
 
     return s.substring(leftIncl, rightIncl)
+            .replace("\\", "\\\\")
             .replace("\r", "\\r")
-            .replace("\n", "\\n")
-            .replace("\\", "\\\\");
+            .replace("\n", "\\n");
   }
 }
 
