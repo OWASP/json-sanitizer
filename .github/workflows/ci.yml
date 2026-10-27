@@ -45,12 +45,9 @@ jobs:
 
       - name: Check the bytecode level is Java 8 (class file major version 52)
         run: |
-          status=0
-          for c in $(find target/classes -name '*.class'); do
-            major=$(javap -v "$c" | sed -n 's/^ *major version: //p')
-            if [ "$major" != "52" ]; then echo "$c: major version $major"; status=1; fi
-          done
-          exit $status
+          majors=$(find target/classes -name '*.class' -exec javap -v {} + | sed -n 's/^ *major version: //p' | sort -u)
+          echo "class file major versions: $majors"
+          [ "$majors" = "52" ]
 
       - name: Replay the golden corpus on JDK ${{ matrix.test-jdk }}
         run: |
