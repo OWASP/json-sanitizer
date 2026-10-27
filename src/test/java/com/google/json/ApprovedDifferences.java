@@ -40,14 +40,25 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
   static {
     Map<String, Integer> m = new LinkedHashMap<String, Integer>();
     m.put("SEC-001 over-long hex/octal literal is 1e999", 35280);
+    m.put("SEC-005 over-deep value skipped as the main loop tokenizes it", 12834);
     EXPECTED_COUNTS = Collections.unmodifiableMap(m);
   }
+
+  /** The maximum nesting depth of each of GoldenCorpus's seven calls. */
+  private static final int[] LEG_DEPTHS = {
+    JsonSanitizer.DEFAULT_NESTING_DEPTH, JsonSanitizer.DEFAULT_NESTING_DEPTH, 1, 3,
+    JsonSanitizer.DEFAULT_NESTING_DEPTH, JsonSanitizer.DEFAULT_NESTING_DEPTH, JsonSanitizer.DEFAULT_NESTING_DEPTH,
+  };
 
   /** An approved fix, as a rewrite of the input in terms of the legacy implementation. */
   private interface Rewrite {
     String id();
-    /** The input as the legacy implementation must see it to behave like the fix; the input itself if the fix does not apply. */
-    String rewrite(String input);
+    /**
+     * The input as the legacy implementation must see it, at this maximum
+     * nesting depth, to behave like the fix; the input itself if the fix does
+     * not apply.
+     */
+    String rewrite(String input, int depth);
   }
 
   private final List<Rewrite> rewrites = new ArrayList<Rewrite>();
@@ -55,7 +66,11 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
   ApprovedDifferences() {
     rewrites.add(new Rewrite() {
       public String id() { return "SEC-001 over-long hex/octal literal is 1e999"; }
-      public String rewrite(String input) { return overLongLiteralsAsInfinity(input); }
+      public String rewrite(String input, int depth) { return overLongLiteralsAsInfinity(input); }
+    });
+    rewrites.add(new Rewrite() {
+      public String id() { return "SEC-005 over-deep value skipped as the main loop tokenizes it"; }
+      public String rewrite(String input, int depth) { return overDeepValuesAsEmptyArrays(input, depth); }
     });
   }
 
@@ -68,11 +83,12 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
       cachedLegs.clear();
     }
     for (Rewrite r : rewrites) {
-      String[] legs = cachedLegs.get(r.id());
+      String key = r.id() + "@" + LEG_DEPTHS[leg];
+      String[] legs = cachedLegs.get(key);
       if (legs == null) {
-        String rewritten = r.rewrite(input);
+        String rewritten = r.rewrite(input, LEG_DEPTHS[leg]);
         legs = rewritten.equals(input) ? new String[0] : GoldenCorpus.LEGACY.legs(rewritten);
-        cachedLegs.put(r.id(), legs);
+        cachedLegs.put(key, legs);
       }
       if (legs.length != 0 && legs[leg].equals(current)) {
         return r.id();
@@ -138,5 +154,146 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
     // An octal-looking literal with an 8 or 9 is decimal and is copied, not reencoded.
     if (!hex && j < end && (s.charAt(j) == '8' || s.charAt(j) == '9')) { return false; }
     return significant > MAX_EXACT_REENCODED_DIGITS;
+  }
+
+  // ---- SEC-005 ------------------------------------------------------------------------------
+
+  /**
+   * SEC-005: a value nested deeper than the limit is skipped as the main loop
+   * tokenizes text, so a quote inside a word (a'b) no longer starts a string
+   * and swallows the value's siblings. In legacy terms: each over-deep value,
+   * found with the main loop's token rules (re-implemented here, independently
+   * of the fix), is replaced by "[]", which the legacy code then turns into
+   * null through the same branch, keeping the siblings it would keep anyway.
+   */
+  static String overDeepValuesAsEmptyArrays(String s, int maxDepth) {
+    StringBuilder sb = new StringBuilder(s.length());
+    int copied = 0;
+    int n = s.length();
+    int depth = 0;
+    int i = 0;
+    while (i < n) {
+      char ch = s.charAt(i);
+      switch (ch) {
+        case '"': case '\'':
+          i = endOfQuotedString(s, i);
+          break;
+        case '/':
+          i = endOfComment(s, i);
+          break;
+        case '{': case '[':
+          if (depth >= maxDepth) {
+            int end = endOfValue(s, i);
+            sb.append(s, copied, i).append("[]");
+            copied = end;
+            i = end;
+          } else {
+            ++depth;
+            ++i;
+          }
+          break;
+        case '}': case ']': case ',':
+          // At depth 0 the main loop drops the rest of the input.
+          if (depth == 0) { i = n; break; }
+          if (ch != ',') { --depth; }
+          ++i;
+          break;
+        default:
+          int end = endOfToken(s, i);
+          i = end > i ? end : i + 1;
+          break;
+      }
+    }
+    if (copied == 0) { return s; }
+    return sb.append(s, copied, n).toString();
+  }
+
+  /** Past the close bracket matching the open bracket at start, by the main loop's token rules. */
+  private static int endOfValue(String s, int start) {
+    int n = s.length();
+    int depth = 0;
+    int i = start;
+    while (i < n) {
+      char ch = s.charAt(i);
+      switch (ch) {
+        case '"': case '\'':
+          i = endOfQuotedString(s, i);
+          break;
+        case '/':
+          i = endOfComment(s, i);
+          break;
+        case '{': case '[':
+          ++depth;
+          ++i;
+          break;
+        case '}': case ']':
+          ++i;
+          if (--depth == 0) { return i; }
+          break;
+        default:
+          int end = endOfToken(s, i);
+          i = end > i ? end : i + 1;
+          break;
+      }
+    }
+    return n;
+  }
+
+  /**
+   * The end of the unquoted token at i as the main loop reads it: a run of
+   * [A-Za-z0-9+-._$]; unless it is a number or keyword, extended to the next
+   * JSON special character and past a double quote there. i itself if no run starts at i.
+   */
+  private static int endOfToken(String s, int i) {
+    int n = s.length();
+    int end = i;
+    while (end < n && isRunChar(s.charAt(end))) { ++end; }
+    if (end == i) { return i; }
+    char c = s.charAt(i);
+    boolean number = ('0' <= c && c <= '9') || c == '.' || c == '+' || c == '-';
+    String word = s.substring(i, end);
+    boolean keyword = word.equals("true") || word.equals("false") || word.equals("null");
+    if (number || keyword) { return end; }
+    while (end < n && !isSpecial(s.charAt(end))) { ++end; }
+    if (end < n && s.charAt(end) == '"') { ++end; }
+    return end;
+  }
+
+  private static boolean isSpecial(char c) {
+    return c <= ' ' || c == '"' || c == ',' || c == ':' || c == '[' || c == ']' || c == '{' || c == '}';
+  }
+
+  /** Past the closing quote of the string at start, or the end of input; a quote after an odd run of backslashes is escaped. */
+  private static int endOfQuotedString(String s, int start) {
+    char quote = s.charAt(start);
+    for (int i = start; (i = s.indexOf(quote, i + 1)) >= 0;) {
+      int slashes = 0;
+      while (i - slashes - 1 > start && s.charAt(i - slashes - 1) == '\\') { ++slashes; }
+      if ((slashes & 1) == 0) { return i + 1; }
+    }
+    return s.length();
+  }
+
+  /** Past the comment at start: // to a line end, /* to the next star-slash, a lone / is one char. */
+  private static int endOfComment(String s, int start) {
+    int n = s.length();
+    if (start + 1 >= n) { return start + 1; }
+    char c = s.charAt(start + 1);
+    if (c == '/') {
+      for (int j = start + 2; j < n; ++j) {
+        char cc = s.charAt(j);
+        if (cc == '\n' || cc == '\r' || cc == '\u2028' || cc == '\u2029') { return j + 1; }
+      }
+      return n;
+    }
+    if (c == '*') {
+      if (start + 3 < n) {
+        for (int j = start + 2; (j = s.indexOf('/', j + 1)) >= 0;) {
+          if (s.charAt(j - 1) == '*') { return j + 1; }
+        }
+      }
+      return n;
+    }
+    return start + 1;
   }
 }

@@ -157,6 +157,33 @@ public final class SecurityFixesTest {
     }
   }
 
+  /**
+   * SEC-005 (CWE-436): the scanner that skips an over-deep value split
+   * unquoted text differently from the main loop, so a quote inside a word
+   * (a'b) started a string there and swallowed the value's siblings (Q4d).
+   */
+  @Test
+  public final void testSec005OverDeepValueKeepsItsSiblings() {
+    assertEquals("[null,\"keep\",\"x\"]", sanitize("[[a'b],\"keep\",'x']", 1));
+    assertEquals("[null,\"keep\"]", sanitize("[[a\"b],\"keep\"]", 1));
+    assertEquals("{\"a\":null,\"b\":1}", sanitize("{\"a\":[it's],\"b\":1}", 1));
+    // A quote that starts a token still starts a string, as in the main loop.
+    assertEquals("[null,2]", sanitize("[['a]b'],2]", 1));
+    // At the default depth the same input already kept them.
+    assertEquals("[[\"a'b\"],\"keep\",\"x\"]", sanitize("[[a'b],\"keep\",'x']"));
+    // The skip scanner ends a value exactly where the main loop would: every
+    // test input that the main loop reads as one closed value is skipped whole.
+    int checked = 0;
+    for (String t : GoldenCorpus.testInputs()) {
+      String trimmed = t.trim();
+      if (trimmed.isEmpty() || (trimmed.charAt(0) != '[' && trimmed.charAt(0) != '{')) { continue; }
+      if (!sanitize("[" + t + ",7]").endsWith(",7]")) { continue; }
+      assertEquals("[null,7]", sanitize("[" + t + ",7]", 1), t);
+      ++checked;
+    }
+    assertTrue(checked > 20, "only " + checked + " inputs checked");
+  }
+
   /** Feeds an endless input to the default stream overloads; run by testSec003 in a 256 MB JVM. */
   static final class EndlessInput {
     public static void main(String[] args) {

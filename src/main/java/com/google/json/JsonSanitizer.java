@@ -559,16 +559,7 @@ public final class JsonSanitizer {
             // Look for a run of '.', [0-9], [a-zA-Z_$], [+-] which subsumes
             // all the above without including any JSON special characters
             // outside keyword and number.
-            int runEnd;
-            for (runEnd = i; runEnd < n; ++runEnd) {
-              char tch = jsonish.charAt(runEnd);
-              if (('a' <= tch && tch <= 'z') || ('0' <= tch && tch <= '9')
-                  || tch == '+' || tch == '-' || tch == '.'
-                  || ('A' <= tch && tch <= 'Z') || tch == '_' || tch == '$') {
-                continue;
-              }
-              break;
-            }
+            int runEnd = endOfWordRun(i);
 
             if (runEnd == i) {
               elide(i, i + 1);
@@ -577,21 +568,13 @@ public final class JsonSanitizer {
 
             state = requireValueState(i, state, true);
 
-            boolean isNumber = ('0' <= ch && ch <= '9')
-               || ch == '.' || ch == '+' || ch == '-';
+            boolean isNumber = isNumberStart(ch);
             boolean isKeyword = !isNumber && isKeyword(i, runEnd);
 
             if (!(isNumber || isKeyword)) {
               // We're going to have to quote the output.  Further expand to
               // include more of an unquoted token in a string.
-              for (; runEnd < n; ++runEnd) {
-                if (isJsonSpecialChar(runEnd)) {
-                  break;
-                }
-              }
-              if (runEnd < n && jsonish.charAt(runEnd) == '"') {
-                ++runEnd;
-              }
+              runEnd = endOfUnquotedString(runEnd);
             }
 
             if (state == State.AFTER_KEY) {
@@ -995,7 +978,8 @@ public final class JsonSanitizer {
     int n = jsonish.length();
     int depth = 0;
     for (int i = start; i < n; ++i) {
-      switch (jsonish.charAt(i)) {
+      char ch = jsonish.charAt(i);
+      switch (ch) {
         case '"': case '\'':
           i = endOfQuotedString(jsonish, i) - 1;
           break;
@@ -1008,10 +992,62 @@ public final class JsonSanitizer {
         case '}': case ']':
           if (--depth == 0) { return i + 1; }
           break;
-        default: break;
+        default:
+          // Split unquoted text into tokens as sanitize() does, so a quote
+          // inside a word, as in a'b, does not start a string here when it
+          // does not there (SEC-005).
+          int runEnd = endOfWordRun(i);
+          if (runEnd != i) {
+            if (!(isNumberStart(ch) || isKeyword(i, runEnd))) {
+              runEnd = endOfUnquotedString(runEnd);
+            }
+            i = runEnd - 1;
+          }
+          break;
       }
     }
     return n;
+  }
+
+  /**
+   * The end of the run of '.', [0-9], [a-zA-Z_$] and [+-] starting at
+   * {@code start}: the extent of a number or keyword.
+   */
+  private int endOfWordRun(int start) {
+    int n = jsonish.length();
+    int runEnd;
+    for (runEnd = start; runEnd < n; ++runEnd) {
+      char tch = jsonish.charAt(runEnd);
+      if (('a' <= tch && tch <= 'z') || ('0' <= tch && tch <= '9')
+          || tch == '+' || tch == '-' || tch == '.'
+          || ('A' <= tch && tch <= 'Z') || tch == '_' || tch == '$') {
+        continue;
+      }
+      break;
+    }
+    return runEnd;
+  }
+
+  private static boolean isNumberStart(char ch) {
+    return ('0' <= ch && ch <= '9') || ch == '.' || ch == '+' || ch == '-';
+  }
+
+  /**
+   * Extends a word run that is neither a number nor a keyword to the end of
+   * the unquoted string it starts: up to the next JSON special character, and
+   * past a double quote there.
+   */
+  private int endOfUnquotedString(int runEnd) {
+    int n = jsonish.length();
+    for (; runEnd < n; ++runEnd) {
+      if (isJsonSpecialChar(runEnd)) {
+        break;
+      }
+    }
+    if (runEnd < n && jsonish.charAt(runEnd) == '"') {
+      ++runEnd;
+    }
+    return runEnd;
   }
 
   /**
