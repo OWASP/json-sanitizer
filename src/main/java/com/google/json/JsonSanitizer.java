@@ -148,8 +148,8 @@ public final class JsonSanitizer {
    * later changes to {@code jsonish} do not affect the result.
    *
    * @param jsonish JSON-like content.
-   * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
-   *     it is returned unchanged.
+   * @return embeddable JSON, always as an immutable {@code String}, never
+   *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
   public static CharSequence sanitize(CharSequence jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
@@ -161,8 +161,8 @@ public final class JsonSanitizer {
    *
    * @param jsonish JSON-like content.
    * @param maximumNestingDepth maximum nesting depth.
-   * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
-   *     it is returned unchanged.
+   * @return embeddable JSON, always as an immutable {@code String}, never
+   *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
   public static CharSequence sanitize(
       CharSequence jsonish, int maximumNestingDepth) {
@@ -172,7 +172,9 @@ public final class JsonSanitizer {
     JsonSanitizer s = new JsonSanitizer(
         jsonish.toString(), maximumNestingDepth);
     s.sanitize();
-    return s.sanitizedJson != null ? s.sanitizedJson : jsonish;
+    // Never the caller's object: a mutable one could change after it was
+    // checked (SEC-002).
+    return s.toString();
   }
 
   /**

@@ -45,3 +45,4 @@ com.google.json.StreamCharacterizationTest#testMalformedUtf8AtTheByteBufferBound
 com.google.json.StreamCharacterizationTest#testOneCharOrByteAtATime
 com.google.json.JsonSanitizerFuzzTest#testStrictJsonCheck
 com.google.json.SecurityFixesTest#testSec001LongHexAndOctalLiteralsTakeLinearTime
+com.google.json.SecurityFixesTest#testSec002CharSequenceResultCannotChangeLater

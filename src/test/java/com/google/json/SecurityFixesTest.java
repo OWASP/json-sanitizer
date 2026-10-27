@@ -83,4 +83,23 @@ public final class SecurityFixesTest {
     assertEquals("[1e999]", out);
     assertTrue(elapsedMs < 1000, "1,000,000 hex digits took " + elapsedMs + " ms");
   }
+
+  /**
+   * SEC-002 (CWE-375): sanitize(CharSequence) returned the caller's own mutable
+   * object when it was already clean, so a later change to it changed the
+   * "sanitized" result (Q4b).
+   */
+  @Test
+  public final void testSec002CharSequenceResultCannotChangeLater() {
+    StringBuilder pooled = new StringBuilder("[\"ok\"]");
+    CharSequence result = sanitize(pooled);
+    assertTrue(result instanceof String, result.getClass().getName());
+    pooled.setLength(0);
+    pooled.append("[\"</script>\"]");
+    assertEquals("[\"ok\"]", result.toString());
+    // Also when the input needed changes: no internal buffer is handed out.
+    CharSequence fixed = sanitize(new StringBuilder("{a:1}"), JsonSanitizer.DEFAULT_NESTING_DEPTH);
+    assertTrue(fixed instanceof String, fixed.getClass().getName());
+    assertEquals("{\"a\":1}", fixed);
+  }
 }
