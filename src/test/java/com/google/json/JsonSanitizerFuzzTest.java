@@ -27,16 +27,26 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.StringReader;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
 /**
- * Jazzer fuzz target for {@link JsonSanitizer#sanitize(String)}. Asserts that
- * sanitizing never throws (an exception is a finding), the output parses under
- * a strict RFC 8259 parser as exactly one value, the output is idempotent
- * (RULE-026), and no output contains a script or comment breakout (RULE-057).
+ * Jazzer fuzz target for {@link JsonSanitizer} and {@link EvalMinifier}. For
+ * the default nesting depth and for a fuzzed one, asserts that sanitizing never
+ * throws (an exception is a finding), the output is exactly one strict RFC 8259
+ * value, the output is idempotent (RULE-026) and no output contains a script or
+ * comment breakout (RULE-057); that the Reader and InputStream overloads give
+ * the String overload's output (RULE-058); and that minifying never throws or
+ * adds a breakout (RULE-056).
  * <p>
  * A plain {@code mvn test} replays the seed inputs under
  * src/test/resources/com/google/json/JsonSanitizerFuzzTestInputs/sanitizeProperties/. Fuzzing
@@ -53,25 +63,58 @@ public final class JsonSanitizerFuzzTest {
           .maxNestingDepth(Integer.MAX_VALUE)
           .maxNumberLength(Integer.MAX_VALUE)
           .maxStringLength(Integer.MAX_VALUE)
+          .maxNameLength(Integer.MAX_VALUE)
           .build())
       .build();
 
   @FuzzTest(maxDuration = "5m")
   public final void sanitizeProperties(FuzzedDataProvider data) throws IOException {
+    // Jazzer takes the int from the end of the data and the string from the front.
+    int depth = data.consumeInt(1, 70);
     String input = data.consumeRemainingAsString();
-    String out = JsonSanitizer.sanitize(input);
 
+    String out = JsonSanitizer.sanitize(input);
+    assertSafe(out, JsonSanitizer.DEFAULT_NESTING_DEPTH);
+    String outAtDepth = JsonSanitizer.sanitize(input, depth);
+    assertSafe(outAtDepth, depth);
+
+    StringBuilder viaReader = new StringBuilder();
+    JsonSanitizer.sanitize(new StringReader(input), viaReader, depth);
+    assertEquals(outAtDepth, viaReader.toString(), "Reader overload");
+    // Encoding replaces a lone surrogate with '?', so compare with the decoded text.
+    byte[] utf8 = input.getBytes(StandardCharsets.UTF_8);
+    ByteArrayOutputStream viaBytes = new ByteArrayOutputStream();
+    JsonSanitizer.sanitize(new ByteArrayInputStream(utf8), viaBytes, depth);
+    assertEquals(JsonSanitizer.sanitize(new String(utf8, StandardCharsets.UTF_8), depth),
+        new String(viaBytes.toByteArray(), StandardCharsets.UTF_8), "InputStream overload");
+
+    assertNoBreakout(EvalMinifier.minify(input, depth));
+  }
+
+  private static void assertSafe(String out, int depth) throws IOException {
     assertStrictJson(out);
-    assertEquals(out, JsonSanitizer.sanitize(out), "not idempotent");
+    assertEquals(out, JsonSanitizer.sanitize(out, depth), "not idempotent at depth " + depth);
+    assertNoBreakout(out);
+  }
+
+  private static void assertNoBreakout(String out) {
     String lower = out.toLowerCase(Locale.ROOT);
     for (String breakout : BREAKOUTS) {
       assertFalse(lower.contains(breakout), breakout);
     }
   }
 
-  /** Fails unless {@code json} is exactly one strict RFC 8259 value. */
+  /**
+   * Fails unless {@code json} is exactly one strict RFC 8259 value. It is
+   * encoded as UTF-8 first (RFC 8259 section 8.1), so a raw lone surrogate,
+   * which has no UTF-8 encoding, is rejected.
+   */
   static void assertStrictJson(String json) throws IOException {
-    JsonParser p = STRICT.createParser(withoutSurrogateEscapes(json));
+    ByteBuffer utf8 = StandardCharsets.UTF_8.newEncoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+        .encode(CharBuffer.wrap(withoutSurrogateEscapes(json)));
+    JsonParser p = STRICT.createParser(utf8.array(), utf8.arrayOffset(), utf8.limit());
     try {
       int depth = 0;
       do {
@@ -138,19 +181,24 @@ public final class JsonSanitizerFuzzTest {
     for (int i = 0; i < 4096; ++i) { deep.append(']'); }
     StringBuilder digits = new StringBuilder("1");
     for (int i = 0; i < 5000; ++i) { digits.append('0'); }
+    StringBuilder longKey = new StringBuilder("{\"");
+    for (int i = 0; i < 60000; ++i) { longKey.append('k'); }
+    longKey.append("\":1}");
     for (String ok : new String[] {
         "null", " 1 ", "1e999", "-0", "[]", "{\"a\":[1,{}]}", "\"\\ud800\"", deep.toString(), digits.toString(),
         // Lone surrogate escapes are valid RFC 8259, in keys as in values (Jazzer's first finding).
         "{\"\\uDDDD\":1}", "{\"\\uD800\":1}", "{\"\\ud83d\\ude00\":\"\\uDBFF\"}",
         // An escaped backslash followed by text that looks like an escape.
-        "{\"\\\\uD800\":1}", "\"\\\\\\uDC00\"" }) {
+        "{\"\\\\uD800\":1}", "\"\\\\\\uDC00\"", longKey.toString(), "[\"\ud83d\ude00\"]" }) {
       assertFalse(rejected(ok), ok);
     }
     for (String bad : new String[] {
         "", "[1]]", "1 2", "[1] [2]", "{'a':1}", "{a:1}", "[1,]", "01", "NaN", "+1", ".5",
         "\"\u0001\"", "\"\\x41\"", "\"\\v\"", "[1", "/* */1", "\"a\"\"b\"",
         // Malformed escapes stay malformed after the surrogate rewrite.
-        "\"\\uD80\"", "\"\\uDZ00\"", "{\"\\uD8\":1}", "\\uD800", "[\\uD800]" }) {
+        "\"\\uD80\"", "\"\\uDZ00\"", "{\"\\uD8\":1}", "\\uD800", "[\\uD800]",
+        // A raw (unescaped) lone surrogate cannot be encoded as UTF-8.
+        "[\"\ud800\"]", "{\"\udc00\":1}" }) {
       assertTrue(rejected(bad), bad);
     }
     assertEquals("{\"\\uFFFD\\\\uD800\":\"\\uFFFD\"}", withoutSurrogateEscapes("{\"\\udc00\\\\uD800\":\"\\uDBFF\"}"));

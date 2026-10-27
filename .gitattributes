@@ -15,3 +15,8 @@
 *.PDF	 diff=astextplain
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
+
+# Test data whose bytes are checked: the golden-corpus digests (SHA-256 pinned in
+# GoldenCorpusTest) and the Jazzer seed inputs must not get CRLF line endings.
+src/test/resources/com/google/json/golden-digests.txt text eol=lf
+src/test/resources/com/google/json/JsonSanitizerFuzzTestInputs/** binary

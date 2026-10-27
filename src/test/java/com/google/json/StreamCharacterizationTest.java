@@ -102,11 +102,30 @@ public final class StreamCharacterizationTest {
   }
 
   @Test
+  public final void testMalformedUtf8AtTheByteBufferBoundary() throws IOException {
+    // A truncated 3-byte sequence (E2 82) at bytes READ_BUFFER - 1 and READ_BUFFER,
+    // so the decoder sees it split across two 8192-byte reads.
+    byte[] in = new byte[READ_BUFFER + 3];
+    in[0] = '[';
+    in[1] = '"';
+    for (int i = 2; i < READ_BUFFER - 1; ++i) { in[i] = 'a'; }
+    in[READ_BUFFER - 1] = (byte) 0xE2;
+    in[READ_BUFFER] = (byte) 0x82;
+    in[READ_BUFFER + 1] = '"';
+    in[READ_BUFFER + 2] = ']';
+    StringBuilder want = new StringBuilder("[\"");
+    for (int i = 2; i < READ_BUFFER - 1; ++i) { want.append('a'); }
+    want.append("�\"]");
+    assertEquals(want.toString(), sanitizeBytes(in));
+  }
+
+  @Test
   public final void testOneCharOrByteAtATime() throws IOException {
     // RULE-058: a source that returns one char or one byte per read splits every
     // surrogate pair and every multi-byte sequence; the output must not change.
     String input = "['caf\u00e9',\"\ud83d\ude00\",'\u2028',{a:\"</script>\"}]";
-    String expected = sanitize(input);
+    String expected = "[\"caf\u00e9\",\"\ud83d\ude00\",\"\\u2028\",{\"a\":\"\\u003c/script>\"}]";
+    assertEquals(expected, sanitize(input));
 
     StringBuilder viaReader = new StringBuilder();
     sanitize(new OneCharReader(new StringReader(input)), viaReader);

@@ -21,9 +21,9 @@ jobs:
       matrix:
         test-jdk: [8, 11, 17, 21, 25]
     env:
-      # The number of tests the suite executes: the legacy baseline's 28 (analysis/json-sanitizer/BASELINE.md)
-      # plus the 20 added in Phase 2. A leg that runs fewer lost tests somewhere.
-      MIN_TESTS: 48
+      # The Jazzer seed inputs every leg replays: the empty input plus the files in
+      # src/test/resources/com/google/json/JsonSanitizerFuzzTestInputs/sanitizeProperties/.
+      MIN_SEED_REPLAYS: 8
       # A fixed seed so every leg and every run fuzzes the same 10,000 inputs. "json-san" in ASCII.
       FUZZ_SEED: 6a736f6e2d73616e
     steps:
@@ -54,16 +54,13 @@ jobs:
       - name: Build on JDK 21, run the tests on JDK ${{ matrix.test-jdk }}
         run: mvn -B -ntp clean verify -Djvm="${{ steps.test-jvm.outputs.java }}" -Dfuzz.seed="$FUZZ_SEED"
 
-      - name: Check the tests ran on JDK ${{ matrix.test-jdk }} and at least the expected count executed
+      # Every report must come from the matrix JDK, and every test in .github/required-tests.txt
+      # (the 28 legacy baseline tests, the golden corpus, the P0 rules ...) must have run, not skipped.
+      - name: Check the required tests ran, unskipped, on JDK ${{ matrix.test-jdk }}
         run: |
           want='${{ matrix.test-jdk }}'
           if [ "$want" = 8 ]; then want=1.8; fi
-          for f in target/surefire-reports/TEST-*.xml; do
-            grep -q "name=\"java.specification.version\" value=\"$want\"" "$f" || { echo "$f did not run on Java $want"; exit 1; }
-          done
-          total=$(( $(grep -ho 'tests="[0-9]*"' target/surefire-reports/TEST-*.xml | grep -o '[0-9]*' | paste -sd+ -) ))
-          echo "tests executed on Java $want: $total (expected at least $MIN_TESTS)"
-          [ "$total" -ge "$MIN_TESTS" ]
+          python3 .github/scripts/check_test_reports.py "$want" .github/required-tests.txt "$MIN_SEED_REPLAYS" target/surefire-reports
 
       - name: Check the jar's bytecode level is Java 8 (class file major version 52)
         run: |
@@ -101,19 +98,31 @@ jobs:
 
       # JAZZER_FUZZ=1 turns the @FuzzTest from seed replay into fuzzing, for its maxDuration (5m).
       # Any exception or failed assertion is a finding and fails the job.
-      - name: Fuzz JsonSanitizer.sanitize
+      - name: Fuzz JsonSanitizer and EvalMinifier
         env:
           JAZZER_FUZZ: 1
-        run: mvn -B -ntp test -Dtest='JsonSanitizerFuzzTest#sanitizeProperties' -Djacoco.skip=true
+        run: mvn -B -ntp test -Dtest='JsonSanitizerFuzzTest#sanitizeProperties' -Djacoco.skip=true 2>&1 | tee fuzz.log
+
+      # A green run proves nothing unless it fuzzed: Jazzer's summary line must show the full budget.
+      - name: Check the fuzzer ran for its full 5 minutes
+        run: |
+          line=$(grep -E '^Done [0-9]+ runs in [0-9]+ second' fuzz.log | tail -1)
+          echo "${line:-no Jazzer summary line}"
+          secs=$(echo "$line" | sed -n 's/^Done [0-9]* runs in \([0-9]*\) second.*/\1/p')
+          [ "${secs:-0}" -ge 280 ]
 
       # A finding is saved as a crash-* file next to the seed inputs; adding it there makes every
-      # later test run replay it.
+      # later test run replay it. Also kept when the job times out.
       - name: Keep the finding of a failed run
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jazzer-finding
           path: |
             src/test/resources/com/google/json/JsonSanitizerFuzzTestInputs/
+            crash-*
+            .cifuzz-corpus/
+            fuzz.log
             target/surefire-reports/
+          include-hidden-files: true
           if-no-files-found: ignore

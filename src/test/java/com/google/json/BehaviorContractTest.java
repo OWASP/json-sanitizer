@@ -17,7 +17,6 @@ package com.google.json;
 import static com.google.json.JsonSanitizer.sanitize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,8 +63,11 @@ public final class BehaviorContractTest {
     assertEquals("[null]", sanitize("[[1,2,3", 1));
     StringBuilder deep = new StringBuilder();
     for (int i = 0; i < 100000; ++i) { deep.append('['); }
-    String out = sanitize(deep.toString());
-    assertTrue(out.contains("null"), out);
+    StringBuilder want = new StringBuilder();
+    for (int i = 0; i < JsonSanitizer.DEFAULT_NESTING_DEPTH; ++i) { want.append('['); }
+    want.append("null");
+    for (int i = 0; i < JsonSanitizer.DEFAULT_NESTING_DEPTH; ++i) { want.append(']'); }
+    assertEquals(want.toString(), sanitize(deep.toString()));
   }
 
   /** RULE-025: exactly one top-level value; whatever would start a second is dropped. */

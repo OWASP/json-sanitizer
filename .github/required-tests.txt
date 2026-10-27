@@ -1,0 +1,45 @@
+# Tests that must run, and not be skipped, on every CI leg (checked by .github/scripts/check_test_reports.py).
+# The first 28 are the legacy baseline (analysis/json-sanitizer/BASELINE.md); the rest were added in Phase 2.
+# Removing a line here is a reviewed change, like removing the test.
+com.google.json.EvalMinifierTest#testMinify
+com.google.json.EvalMinifierTest#testNameGenerator
+com.google.json.EvalMinifierTest#testReservedKeywordsSorted
+com.google.json.FuzzyTest#testSanitizerLikesFuzzyWuzzyInputs
+com.google.json.JsonSanitizerTest#testBadNumber
+com.google.json.JsonSanitizerTest#testCrash1
+com.google.json.JsonSanitizerTest#testDashDashGtEscaped
+com.google.json.JsonSanitizerTest#testDashDashGtUEscaped
+com.google.json.JsonSanitizerTest#testDisallowedSubstrings
+com.google.json.JsonSanitizerTest#testEscHtmlCommentClose
+com.google.json.JsonSanitizerTest#testExcessiveNestingIsReplacedWithNull
+com.google.json.JsonSanitizerTest#testHtmlParserStateChanges
+com.google.json.JsonSanitizerTest#testInvalidOutput
+com.google.json.JsonSanitizerTest#testIssue13
+com.google.json.JsonSanitizerTest#testIssue3
+com.google.json.JsonSanitizerTest#testIssue4
+com.google.json.JsonSanitizerTest#testLongNumberInUnclosedInputWithU80
+com.google.json.JsonSanitizerTest#testLongOctalNumberWithBadDigits
+com.google.json.JsonSanitizerTest#testMaximumNestingLevel
+com.google.json.JsonSanitizerTest#testMaximumNestingLevelAssignment
+com.google.json.JsonSanitizerTest#testSanitize
+com.google.json.JsonSanitizerTest#testSanitizeCharSequence
+com.google.json.JsonSanitizerTest#testSanitizeReader
+com.google.json.JsonSanitizerTest#testSanitizeStreams
+com.google.json.JsonSanitizerTest#testSlashFour
+com.google.json.JsonSanitizerTest#testUnopenedArray
+com.google.json.JsonSanitizerTest#testUnterminatedObject
+com.google.json.JsonSanitizerTest#testXssPayload
+com.google.json.FuzzyTest#testPrintedSeedsReplay
+com.google.json.GoldenCorpusTest#testOutputIsByteIdenticalToTheLegacyBaseline
+com.google.json.BehaviorContractTest#testRule001EscapeAwareLookAhead
+com.google.json.BehaviorContractTest#testRule024OverDeepValueBecomesNull
+com.google.json.BehaviorContractTest#testRule025OneTopLevelValue
+com.google.json.BehaviorContractTest#testRule026Idempotence
+com.google.json.BehaviorContractTest#testRule056MinifySanitizesFirst
+com.google.json.BehaviorContractTest#testRule057NoBreakoutSequences
+com.google.json.StreamCharacterizationTest#testMalformedUtf8BecomesReplacementCharacters
+com.google.json.StreamCharacterizationTest#testByteOrderMark
+com.google.json.StreamCharacterizationTest#testSurrogatePairSplitAtTheReadBoundary
+com.google.json.StreamCharacterizationTest#testMalformedUtf8AtTheByteBufferBoundary
+com.google.json.StreamCharacterizationTest#testOneCharOrByteAtATime
+com.google.json.JsonSanitizerFuzzTest#testStrictJsonCheck
