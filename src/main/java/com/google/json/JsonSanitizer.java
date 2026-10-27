@@ -115,6 +115,12 @@ public final class JsonSanitizer {
   public static final int MAXIMUM_NESTING_DEPTH = 4096;
 
   /**
+   * The default for the maximumInputLength parameter of the Reader and
+   * InputStream overloads: 16 Mi chars (16,777,216).
+   */
+  public static final int DEFAULT_MAXIMUM_INPUT_LENGTH = 1 << 24;
+
+  /**
    * Given JSON-like content, produces a string of JSON that is safe to embed,
    * safe to pass to JavaScript's {@code eval} operator.
    *
@@ -181,13 +187,16 @@ public final class JsonSanitizer {
    * Reads JSON-like content from {@code in} and writes embeddable JSON to
    * {@code out}.
    * <p>
-   * The whole input is read into memory before sanitizing, so callers handling
-   * untrusted input should limit its size.  Neither {@code in} nor {@code out}
-   * is closed.
+   * The whole input is read into memory before sanitizing, and output can be
+   * up to six times as long, so input longer than
+   * {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars is rejected with an
+   * {@code IOException}; the overload with a {@code maximumInputLength} changes
+   * that limit.  Neither {@code in} nor {@code out} is closed.
    *
    * @param in JSON-like content.
    * @param out receives embeddable JSON.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} holds more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars.
    */
   public static void sanitize(Reader in, Appendable out) throws IOException {
     sanitize(in, out, DEFAULT_NESTING_DEPTH);
@@ -200,13 +209,44 @@ public final class JsonSanitizer {
    * @param in JSON-like content.
    * @param out receives embeddable JSON.
    * @param maximumNestingDepth maximum nesting depth.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} holds more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars.
    */
   public static void sanitize(
       Reader in, Appendable out, int maximumNestingDepth) throws IOException {
+    sanitize(in, out, maximumNestingDepth, DEFAULT_MAXIMUM_INPUT_LENGTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(Reader, Appendable, int)}, but
+   * allows to set the maximum input length.
+   *
+   * @param in JSON-like content.
+   * @param out receives embeddable JSON.
+   * @param maximumNestingDepth maximum nesting depth.
+   * @param maximumInputLength the most chars read from {@code in}; at least 0.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} holds more than {@code maximumInputLength} chars, in which
+   *     case nothing is written to {@code out}.
+   * @throws IllegalArgumentException if {@code maximumInputLength} is negative.
+   */
+  public static void sanitize(
+      Reader in, Appendable out, int maximumNestingDepth,
+      int maximumInputLength)
+      throws IOException {
+    if (maximumInputLength < 0) {
+      throw new IllegalArgumentException(
+          "maximumInputLength " + maximumInputLength);
+    }
     StringBuilder jsonish = new StringBuilder();
     char[] buf = new char[8192];
     for (int n; (n = in.read(buf)) >= 0;) {
+      // Fail before buffering more than allowed, so endless input cannot
+      // exhaust the heap (SEC-003).
+      if (n > maximumInputLength - jsonish.length()) {
+        throw new IOException(
+            "JSON-like input is longer than " + maximumInputLength + " chars");
+      }
       jsonish.append(buf, 0, n);
     }
     JsonSanitizer s = new JsonSanitizer(
@@ -220,13 +260,18 @@ public final class JsonSanitizer {
    * encoded embeddable JSON to {@code out}.
    * Malformed UTF-8 is decoded as U+FFFD.
    * <p>
-   * The whole input is read into memory before sanitizing, so callers handling
-   * untrusted input should limit its size.  Neither {@code in} nor {@code out}
-   * is closed, but {@code out} is flushed.
+   * The whole input is read into memory before sanitizing, and output can be
+   * up to six times as long, so input that decodes to more than
+   * {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars is rejected with an
+   * {@code IOException}; the overload with a {@code maximumInputLength} changes
+   * that limit.  Neither {@code in} nor {@code out} is closed, but {@code out}
+   * is flushed.
    *
    * @param in UTF-8 encoded JSON-like content.
    * @param out receives UTF-8 encoded embeddable JSON.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} decodes to more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH}
+   *     chars.
    */
   public static void sanitize(InputStream in, OutputStream out)
       throws IOException {
@@ -240,13 +285,38 @@ public final class JsonSanitizer {
    * @param in UTF-8 encoded JSON-like content.
    * @param out receives UTF-8 encoded embeddable JSON.
    * @param maximumNestingDepth maximum nesting depth.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} decodes to more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH}
+   *     chars.
    */
   public static void sanitize(
       InputStream in, OutputStream out, int maximumNestingDepth)
       throws IOException {
+    sanitize(in, out, maximumNestingDepth, DEFAULT_MAXIMUM_INPUT_LENGTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(InputStream, OutputStream, int)},
+   * but allows to set the maximum input length.
+   *
+   * @param in UTF-8 encoded JSON-like content.
+   * @param out receives UTF-8 encoded embeddable JSON.
+   * @param maximumNestingDepth maximum nesting depth.
+   * @param maximumInputLength the most chars {@code in} may decode to; at
+   *     least 0.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} decodes to more than {@code maximumInputLength} chars, in
+   *     which case nothing is written to {@code out}.
+   * @throws IllegalArgumentException if {@code maximumInputLength} is negative.
+   */
+  public static void sanitize(
+      InputStream in, OutputStream out, int maximumNestingDepth,
+      int maximumInputLength)
+      throws IOException {
     Writer w = new OutputStreamWriter(out, UTF_8);
-    sanitize(new InputStreamReader(in, UTF_8), w, maximumNestingDepth);
+    sanitize(
+        new InputStreamReader(in, UTF_8), w, maximumNestingDepth,
+        maximumInputLength);
     w.flush();
   }
 
