@@ -75,3 +75,78 @@ One unit, the whole Maven module: builds on the target (`mvn clean verify`, JDK 
 | Nit | `RELEASE-checklist.sh` still describes the nexus-staging flow the pom no longer has. | **Flagged, not changed** (Phase 4). Nobody should follow that script in between. |
 
 The critic's "one thing": the post-`verify` assertion (H1). It is in the workflow and was exercised locally on every leg.
+
+# Phase 2: test harness (JUnit 5, golden corpus, reproducible fuzzing)
+
+- **Date:** 2026-10-27
+- **Commits:** `d157b20`..`76f7bc7` on top of `475f264` (the end of Phase 1). Entry criteria met first: Phase 1's CI ran green on GitHub ([run 40588718585](https://github.com/OWASP/json-sanitizer/actions/runs/40588718585), branch `java8-toolchain-and-ci`).
+- **Scope:** `pom.xml` (test dependencies only), `src/test/**`, `.github/**`, `.gitattributes`, `.gitignore`. **No file under `src/main/` changed** (`git diff 475f264 -- src/main` is empty).
+- **Playbook:** `analysis/json-sanitizer/PLAYBOOK.md` section 6.
+
+## What changed and why
+
+| Brief criterion / delta | Change |
+|---|---|
+| Jupiter only, every baseline name mapped (DELTA-01) | JUnit 5.14.4 via the BOM (JUnit 6 needs Java 17); `junit:junit` removed, no vintage engine. The 28 methods keep their classes and names, lose `static` and `TestCase`. Eight message-first assertions reordered (four would have compiled with the wrong meaning); each mutation-checked. |
+| Surefire fails on zero tests | `failIfNoTests` (since Phase 1). CI additionally requires each test in `.github/required-tests.txt` to run unskipped on every leg. |
+| FuzzyTest: fixed seed in CI, `-Dfuzz.seed`, RULE-026 diagnostics | CI keeps the fixed seed; seeds parse with `Long.parseUnsignedLong` (Q12, RULE-063), so the baseline's `ea41f76fb21e5107` replays; the "After:" excerpt and `excerpt()` escaping are fixed. |
+| Golden-corpus test | `GoldenCorpus` and its digests moved (`git mv`) under `src/test`; `GoldenCorpusTest` verifies on every leg's JVM and pins the digests' SHA-256. `.github/golden/` and its CI step are gone (accepted revision). |
+| One test per P0 rule | `BehaviorContractTest`: RULE-001, -024, -025, -026, -056, -057. RULE-001 pins the legacy `\v` → U+0008 that Phase 3 changes. |
+| Stream characterization (DELTA-11, RULE-034, RULE-058) | `StreamCharacterizationTest`: eight malformed-UTF-8 shapes, BOM before and inside a value, a surrogate pair split at the 8192-char boundary, a truncated sequence split at the 8192-byte boundary, one-char and one-byte reads. Identical on JDK 8 to 25. |
+| Jazzer target and CI job | `JsonSanitizerFuzzTest`: no throw, strict RFC 8259 (Jackson, UTF-8-encoded, size limits lifted), idempotence, no breakout; at the default and a fuzzed depth; Reader/InputStream equal to String; `minify` safe. Seeds replay in every test run; the `fuzz` CI job fuzzes 5 minutes and must show at least 280 s. |
+
+## Dual-run diff
+
+Build JDK 21 for every leg; the test JVM varies through `-Djvm`; seed `6a736f6e2d73616e`. The legacy leg (oracle) is unchanged: `analysis/json-sanitizer/BASELINE.md`, 28 tests.
+
+| Test JVM | Tests executed | Required tests (42) | vs `BASELINE.md` | Golden corpus | Class-file major |
+|---|---|---|---|---|---|
+| Zulu 8.0.512 | 50, 0 failures, 0 skipped | 42 ran | OK: nothing regressed | byte-identical | 52 |
+| Homebrew 11.0.32.1 | 50, 0 failures, 0 skipped | 42 ran | OK: nothing regressed | byte-identical | 52 |
+| Homebrew 17.0.20.1 | 50, 0 failures, 0 skipped | 42 ran | OK: nothing regressed | byte-identical | 52 |
+| Homebrew 21.0.12.1 | 50, 0 failures, 0 skipped | 42 ran | OK: nothing regressed | byte-identical | 52 |
+| Homebrew 25.0.4.1 | 50, 0 failures, 0 skipped | 42 ran | OK: nothing regressed | byte-identical | 52 |
+
+50 = the 28 baseline tests (same names) + 14 new named tests + 8 Jazzer seed replays.
+
+**Fuzzing (JDK 21, local, 5 minutes each):** the first campaign found `{"\uDDDD":1}` after 83 s (below); after the owner's decision a full campaign ran 2,834,362 inputs and the widened target 1,069,698 inputs, both with no finding.
+
+## Jazzer's first finding
+
+The sanitizer keeps an escaped lone surrogate (`\uDDDD`) and escapes a raw one; Jackson rejects such an escape in an object key but accepts it in a value. RFC 8259 §7 allows it (§8.2 only warns), so it is **not a sanitizer defect under the brief's criterion**. Owner decision: the check is RFC 8259 as written; the oracle swaps `\uD800`-`\uDFFF` escapes for `�` before parsing (grammar-preserving, self-tested in `testStrictJsonCheck`), and the input stays as two seeds. Whether output should avoid lone surrogates for I-JSON (RFC 7493) is the proposed Q13 in the brief.
+
+## Residual manual deltas
+
+- **Two exit criteria wait for CI:** the stream tests "pass on every CI leg" and "a CI job runs [Jazzer] for a fixed time with zero findings" need a GitHub run of this code. Local proof only so far.
+- **Dynamic agent warning on JDK 21+:** Jazzer's agent loads dynamically (`A Java agent has been loaded dynamically`). `-XX:+EnableDynamicAgentLoading` would silence it but does not exist on Java 8, so the forked JVM of the 8 leg would not start. A future JDK may disallow dynamic loading; revisit then.
+- **Local seed replay differs from CI:** after a local fuzzing run, `mvn test` also replays the git-ignored `.cifuzz-corpus` (over 1,000 entries); CI never has it. Delete it before a counting proof (done for the table above). The corpus is deliberately not committed: every CI fuzz run starts from the seeds.
+- **Fuzz budget (Q11):** the `fuzz` job adds about 6 minutes of runner time per push and pull request; the organization's budget limit is still unknown.
+- **Repository settings for the maintainer:** CODEOWNERS or branch protection on `src/test/resources/com/google/json/golden-digests.txt`, `GoldenCorpusTest.java` (the pinned hash) and `.github/required-tests.txt`; these are what Phase 3 relies on.
+- **Phase 1 review note M4 above** referred to `.github/golden/`; that copy no longer exists, and the pinned hash replaces the "unnoticed re-recording" risk it described.
+
+## Deferred modernization (deliberately not done)
+
+Converting the 28 legacy tests to parameterized tables (kept one-to-one: the smallest diff and an exact name mapping); a committed, minimized fuzz corpus; OSS-Fuzz integration; fuzzing on more than one JDK.
+
+## Units
+
+One unit, the whole Maven module: builds on JDK 21 and reproduces its baseline on every test JVM above.
+
+## Architecture-critic review (independent, read-only, 2026-10-27)
+
+Reviewed `475f264..6c8880b`. **No Blocker, no High.** Scope verdict: in scope, nothing under `src/main/`, every change maps to a Phase 2 criterion or the accepted revision. It confirmed the 28 names in the surefire XML, each reordered assertion's meaning, the digest file's bytes, and that all new dependencies are test-scoped and Java 8 bytecode.
+
+| # | Finding | Disposition |
+|---|---|---|
+| M1 | CI's count gate summed `tests`, skipped included: a `@Disabled` `GoldenCorpusTest` kept CI green. | **Fixed** (`76f7bc7`): named, unskipped required tests plus a seed-replay minimum. Reproduced the hole (mvn exit 0) and the fix (gate fails). |
+| M2 | The documented `record` command could re-baseline from the uplifted classes; `verify` ignores provenance. | **Fixed:** the digests' SHA-256 is pinned in `GoldenCorpusTest`; `.gitattributes` keeps the file's bytes stable on every OS. |
+| M3 | The fuzz target covered only `sanitize(String)` at the default depth, though Phase 3 changes depth handling, the stream overloads and `minify`. | **Fixed:** fuzzed depth, Reader/InputStream equivalence, `minify` checks. Coverage 607 → 778 edges. |
+| M4 | Nothing proved the fuzz job fuzzed. | **Fixed:** the job fails unless Jazzer reports at least 280 s. |
+| L1 | A raw lone surrogate passed the oracle. | **Fixed:** strict UTF-8 encoding first. |
+| L2 | Jackson's `maxNameLength` (50,000) not lifted. | **Fixed.** |
+| L3 | 100,000-bracket test asserted only `contains("null")`. | **Fixed:** exact output. |
+| L4 | Local runs replay `.cifuzz-corpus`; corpus not kept. | **Recorded** (residual above), deliberate. |
+| L5 | Finding upload skipped on timeout; corpus and stray `crash-*` not uploaded. | **Fixed:** `failure() \|\| cancelled()`, hidden files included. |
+| Nits | Pin the one-char test's literal; a minimized seed; malformed UTF-8 at the byte boundary. | **Fixed**, all three. |
+
+Also fixed without a finding: `.gitattributes` `* text=auto` could have given the pinned digest file CRLF endings on a Windows checkout.
