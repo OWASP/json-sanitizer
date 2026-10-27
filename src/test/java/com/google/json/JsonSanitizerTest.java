@@ -22,8 +22,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Locale;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import junit.framework.TestCase;
 import org.junit.Test;
 
@@ -183,47 +181,52 @@ public final class JsonSanitizerTest extends TestCase {
 
   @Test
   public static final void testMaximumNestingLevel() {
-    String nestedMaps = "{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}";
-    String sanitizedNestedMaps = "{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{\"\":{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}";
-
-    boolean exceptionIfTooMuchNesting = false;
-    try {
-      assertSanitized(sanitizedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH);
-    } catch (JsonNestingDepthException e) {
-      Logger.getAnonymousLogger().log(Level.FINEST, "Expected exception in testing maximum nesting level", e);
-      assertEquals(DEFAULT_NESTING_DEPTH, e.getMaximumNestingDepth());
-      exceptionIfTooMuchNesting = true;
-    }
-    assertTrue("Expecting failure for too nested JSON", exceptionIfTooMuchNesting);
-    assertSanitized(sanitizedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH + 1);
+    // 66 nested maps; the sanitizer supplies an empty key for each.
+    String nestedMaps = repeat("{", 66) + repeat("}", 66);
+    String sanitizedNestedMaps = repeat("{\"\":", 65) + "{}" + repeat("}", 65);
+    // Below the depth the input needs, the innermost levels become null.
+    String truncatedNestedMaps = repeat("{\"\":", DEFAULT_NESTING_DEPTH - 1)
+        + "{\"\":null" + repeat("}", DEFAULT_NESTING_DEPTH);
+    assertSanitized(truncatedNestedMaps, nestedMaps, DEFAULT_NESTING_DEPTH);
+    assertSanitized(sanitizedNestedMaps, nestedMaps, 66);
   }
 
   @Test
-  public static final void testExcessiveNestingThrowsSpecificException() {
-    // Issue #35: unclosed, closed, and mixed deep nesting.
-    String[] inputs = {
-      repeat("[", 5000),
-      repeat("[", 65) + repeat("]", 65),
-      repeat("[{\"a\":", 33),
-    };
-    for (String input : inputs) {
-      try {
-        sanitize(input);
-        fail("Expected JsonNestingDepthException");
-      } catch (JsonNestingDepthException e) {
-        assertEquals(DEFAULT_NESTING_DEPTH, e.getMaximumNestingDepth());
-      }
-    }
-    // Existing handlers that catch the old exception type still work.
-    try {
-      sanitize(repeat("{", 100), 10);
-      fail("Expected ArrayIndexOutOfBoundsException");
-    } catch (ArrayIndexOutOfBoundsException e) {
-      assertTrue(e instanceof JsonNestingDepthException);
-    }
-    // Exactly at the limit is fine.
+  public static final void testExcessiveNestingIsReplacedWithNull() {
+    // Issue #35: over-deep input must not throw.
+    int d = DEFAULT_NESTING_DEPTH;
+    // Unclosed.
     assertSanitized(
-        repeat("[", DEFAULT_NESTING_DEPTH) + repeat("]", DEFAULT_NESTING_DEPTH));
+        repeat("[", d) + "null" + repeat("]", d), repeat("[", 5000));
+    // Closed.
+    assertSanitized(
+        repeat("[", d) + "null" + repeat("]", d),
+        repeat("[", d + 1) + repeat("]", d + 1));
+    // Mixed maps and arrays.
+    assertSanitized(
+        repeat("[{\"a\":", d / 2) + "null" + repeat("}]", d / 2),
+        repeat("[{\"a\":", d / 2 + 1));
+    // Exactly at the limit is fine.
+    assertSanitized(repeat("[", d) + repeat("]", d));
+
+    // Only the over-deep value is replaced; siblings are kept.
+    assertSanitized("[[null],2]", "[[[1]],2]", 2);
+    assertSanitized("{\"a\":null,\"b\":1}", "{\"a\":{\"c\":2},\"b\":1}", 1);
+    assertSanitized("[null,null]", "[[1],[2]]", 1);
+    // Brackets inside strings and comments of the skipped value don't count.
+    assertSanitized("[null,2]", "[[\"]\",']',/* ] */1],2]", 1);
+    assertSanitized("[null,2]", "[[// ]\n1],2]", 1);
+    // Mismatched close brackets are handled as elsewhere.
+    assertSanitized("[null,2]", "[[1},2]", 1);
+    // Over-deep value in key position of a map.
+    assertSanitized("{\"\":null}", "{[1]}", 1);
+    // Repeated sanitizing is stable.
+    String once = sanitize(repeat("[{", 3000) + "1,2" + repeat("}]", 10));
+    assertEquals(once, sanitize(once));
+
+    // Other entry points.
+    assertEquals("[[null]]", sanitize(new StringBuilder("[[["), 2).toString());
+    assertEquals("[[null]]", EvalMinifier.minify("[[[", 2));
   }
 
   private static String repeat(String s, int n) {
@@ -406,12 +409,6 @@ public final class JsonSanitizerTest extends TestCase {
     assertEquals("{\"a\":[1,2]}",
         sanitize(new StringBuilder("{a:[1,2,]}")).toString());
     assertEquals("null", sanitize((CharSequence) null).toString());
-    try {
-      sanitize(new StringBuilder("[[["), 2);
-      fail("Expected JsonNestingDepthException");
-    } catch (JsonNestingDepthException e) {
-      assertEquals(2, e.getMaximumNestingDepth());
-    }
   }
 
   @Test
@@ -429,13 +426,9 @@ public final class JsonSanitizerTest extends TestCase {
     sanitize(new StringReader(big), bigOut);
     assertEquals(sanitize(big), bigOut.toString());
 
-    StringBuilder untouched = new StringBuilder();
-    try {
-      sanitize(new StringReader("[[["), untouched, 2);
-      fail("Expected JsonNestingDepthException");
-    } catch (JsonNestingDepthException e) {
-      assertEquals("", untouched.toString());
-    }
+    StringBuilder deepOut = new StringBuilder();
+    sanitize(new StringReader("[[["), deepOut, 2);
+    assertEquals("[[null]]", deepOut.toString());
   }
 
   @Test
