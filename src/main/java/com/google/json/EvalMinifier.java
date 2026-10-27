@@ -46,6 +46,8 @@ public final class EvalMinifier {
    *   execution will have no side-effects, and which can be embedded safely in
    *   an HTML {@code <script></script>} element or inside an XML
    *   {@code <![CDATA[...]]>} section.
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *   {@link JsonSanitizer#DEFAULT_NESTING_DEPTH}.
    */
   public static String minify(String jsonish) {
     JsonSanitizer s = new JsonSanitizer(jsonish);
@@ -59,6 +61,8 @@ public final class EvalMinifier {
    * {@link JsonSanitizer}.
    * @param maximumNestingDepth the maximum nesting depth for the {@link JsonSanitizer}
    * @return see {@link EvalMinifier#minify(String)}
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *   {@code maximumNestingDepth}.
    */
   public static String minify(String jsonish, int maximumNestingDepth) {
     JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
