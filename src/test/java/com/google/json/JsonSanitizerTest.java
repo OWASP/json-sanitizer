@@ -17,6 +17,10 @@ package com.google.json;
 import static com.google.json.JsonSanitizer.DEFAULT_NESTING_DEPTH;
 import static com.google.json.JsonSanitizer.sanitize;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -392,5 +396,55 @@ public final class JsonSanitizerTest extends TestCase {
     assertEquals(want, got1);
     String got2 = JsonSanitizer.sanitize(got1);
     assertEquals(want, got2);
+  }
+
+  @Test
+  public static final void testSanitizeCharSequence() {
+    // Issue #25
+    StringBuilder clean = new StringBuilder("{\"a\":[1,2]}");
+    assertSame(clean, sanitize(clean));
+    assertEquals("{\"a\":[1,2]}",
+        sanitize(new StringBuilder("{a:[1,2,]}")).toString());
+    assertEquals("null", sanitize((CharSequence) null).toString());
+    try {
+      sanitize(new StringBuilder("[[["), 2);
+      fail("Expected JsonNestingDepthException");
+    } catch (JsonNestingDepthException e) {
+      assertEquals(2, e.getMaximumNestingDepth());
+    }
+  }
+
+  @Test
+  public static final void testSanitizeReader() throws IOException {
+    // Issue #18
+    StringBuilder out = new StringBuilder("prefix:");
+    sanitize(new StringReader("{a:'b'}"), out);
+    assertEquals("prefix:{\"a\":\"b\"}", out.toString());
+
+    // Larger than the read buffer.
+    StringBuilder sb = new StringBuilder("[");
+    for (int i = 0; i < 50000; ++i) { sb.append("'x',"); }
+    String big = sb.toString();
+    StringBuilder bigOut = new StringBuilder();
+    sanitize(new StringReader(big), bigOut);
+    assertEquals(sanitize(big), bigOut.toString());
+
+    StringBuilder untouched = new StringBuilder();
+    try {
+      sanitize(new StringReader("[[["), untouched, 2);
+      fail("Expected JsonNestingDepthException");
+    } catch (JsonNestingDepthException e) {
+      assertEquals("", untouched.toString());
+    }
+  }
+
+  @Test
+  public static final void testSanitizeStreams() throws IOException {
+    // Issue #18
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    sanitize(
+        new ByteArrayInputStream("['caf\u00e9','\u2028']".getBytes("UTF-8")),
+        out);
+    assertEquals("[\"caf\u00e9\",\"\\u2028\"]", out.toString("UTF-8"));
   }
 }

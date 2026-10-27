@@ -14,7 +14,15 @@
 
 package com.google.json;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 
 /**
  * Given JSON-like content, converts it to valid JSON.
@@ -128,6 +136,129 @@ public final class JsonSanitizer {
     s.sanitize();
     return s.toString();
   }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(String)}, but accepts any
+   * {@link CharSequence}, such as a {@link StringBuilder} or the characters of
+   * a string value from another JSON library.
+   * <p>
+   * The content is copied once into a {@code String} before sanitizing, so
+   * later changes to {@code jsonish} do not affect the result.
+   *
+   * @param jsonish JSON-like content.
+   * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
+   *     it is returned unchanged.
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@link #DEFAULT_NESTING_DEPTH}.
+   */
+  public static CharSequence sanitize(CharSequence jsonish) {
+    return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(CharSequence)}, but allows to set a
+   * custom maximum nesting depth.
+   *
+   * @param jsonish JSON-like content.
+   * @param maximumNestingDepth maximum nesting depth.
+   * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
+   *     it is returned unchanged.
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@code maximumNestingDepth}.
+   */
+  public static CharSequence sanitize(
+      CharSequence jsonish, int maximumNestingDepth) {
+    if (jsonish == null) {
+      return sanitize((String) null, maximumNestingDepth);
+    }
+    JsonSanitizer s = new JsonSanitizer(
+        jsonish.toString(), maximumNestingDepth);
+    s.sanitize();
+    return s.sanitizedJson != null ? s.sanitizedJson : jsonish;
+  }
+
+  /**
+   * Reads JSON-like content from {@code in} and writes embeddable JSON to
+   * {@code out}.
+   * <p>
+   * The whole input is read into memory before sanitizing, so callers handling
+   * untrusted input should limit its size.  Neither {@code in} nor {@code out}
+   * is closed.
+   *
+   * @param in JSON-like content.
+   * @param out receives embeddable JSON.
+   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@link #DEFAULT_NESTING_DEPTH}.  Nothing is written to {@code out}.
+   */
+  public static void sanitize(Reader in, Appendable out) throws IOException {
+    sanitize(in, out, DEFAULT_NESTING_DEPTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(Reader, Appendable)}, but allows to
+   * set a custom maximum nesting depth.
+   *
+   * @param in JSON-like content.
+   * @param out receives embeddable JSON.
+   * @param maximumNestingDepth maximum nesting depth.
+   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@code maximumNestingDepth}.  Nothing is written to {@code out}.
+   */
+  public static void sanitize(
+      Reader in, Appendable out, int maximumNestingDepth) throws IOException {
+    StringBuilder jsonish = new StringBuilder();
+    char[] buf = new char[8192];
+    for (int n; (n = in.read(buf)) >= 0;) {
+      jsonish.append(buf, 0, n);
+    }
+    JsonSanitizer s = new JsonSanitizer(
+        jsonish.toString(), maximumNestingDepth);
+    s.sanitize();
+    out.append(s.toCharSequence());
+  }
+
+  /**
+   * Reads UTF-8 encoded JSON-like content from {@code in} and writes UTF-8
+   * encoded embeddable JSON to {@code out}.
+   * Malformed UTF-8 is decoded as U+FFFD.
+   * <p>
+   * The whole input is read into memory before sanitizing, so callers handling
+   * untrusted input should limit its size.  Neither {@code in} nor {@code out}
+   * is closed, but {@code out} is flushed.
+   *
+   * @param in UTF-8 encoded JSON-like content.
+   * @param out receives UTF-8 encoded embeddable JSON.
+   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@link #DEFAULT_NESTING_DEPTH}.  Nothing is written to {@code out}.
+   */
+  public static void sanitize(InputStream in, OutputStream out)
+      throws IOException {
+    sanitize(in, out, DEFAULT_NESTING_DEPTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(InputStream, OutputStream)}, but
+   * allows to set a custom maximum nesting depth.
+   *
+   * @param in UTF-8 encoded JSON-like content.
+   * @param out receives UTF-8 encoded embeddable JSON.
+   * @param maximumNestingDepth maximum nesting depth.
+   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws JsonNestingDepthException if brackets nest more deeply than
+   *     {@code maximumNestingDepth}.  Nothing is written to {@code out}.
+   */
+  public static void sanitize(
+      InputStream in, OutputStream out, int maximumNestingDepth)
+      throws IOException {
+    Writer w = new OutputStreamWriter(out, UTF_8);
+    sanitize(new InputStreamReader(in, UTF_8), w, maximumNestingDepth);
+    w.flush();
+  }
+
+  private static final Charset UTF_8 = Charset.forName("UTF-8");
 
   /**
    * Describes where we are in a state machine that consists of transitions on
