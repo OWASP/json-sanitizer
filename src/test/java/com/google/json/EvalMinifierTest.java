@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import com.google.json.EvalMinifier.NameGenerator;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -98,5 +99,20 @@ public final class EvalMinifierTest extends TestCase {
     assertTrue(shortNames.contains("im"));
     assertFalse(shortNames.contains("in"));
     assertTrue(shortNames.contains("io"));
+  }
+
+  @Test
+  public static final void testReservedKeywordsSorted() {
+    String[][] keywords = EvalMinifier.RESERVED_KEYWORDS;
+    for (int len = 0; len < keywords.length; ++len) {
+      String[] row = keywords[len];
+      for (int i = 0; i < row.length; ++i) {
+        assertEquals(row[i], len, row[i].length());
+        if (i > 0) {
+          assertTrue(row[i - 1] + " < " + row[i], row[i - 1].compareTo(row[i]) < 0);
+        }
+        assertTrue(row[i], Arrays.binarySearch(row, row[i]) >= 0);
+      }
+    }
   }
 }
