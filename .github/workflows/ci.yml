@@ -11,6 +11,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# An explicit bash makes every step run with `-eo pipefail`; the runner's default is `bash -e`,
+# under which `mvn ... | tee fuzz.log` would take tee's exit status and hide a Jazzer finding.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   test:
     name: Test on JDK ${{ matrix.test-jdk }}
