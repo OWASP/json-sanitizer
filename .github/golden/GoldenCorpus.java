@@ -1,3 +1,17 @@
+// Copyright (C) 2026 OWASP json-sanitizer contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // GoldenCorpus.java
 //
 // Deterministic golden corpus for json-sanitizer: records, or verifies against a recording,
@@ -13,12 +27,12 @@
 // For each input seven calls are made ("legs"): S = sanitize(String), C = sanitize(CharSequence),
 // D1 = sanitize(String, 1), D3 = sanitize(String, 3), M = EvalMinifier.minify(String),
 // R = sanitize(Reader, Appendable), B = sanitize(InputStream, OutputStream) over UTF-8 bytes.
-// Inputs are digested in blocks of 256: an "in" digest of the inputs and an "out" digest of the
+// Inputs are digested in blocks of 4096: an "in" digest of the inputs and an "out" digest of the
 // seven outputs, so a mismatch names the block and says whether inputs or outputs differ.
 //
 // Java 8 source level, no dependencies beyond the sanitizer classes.
 //   javac --release 8 -encoding UTF-8 -cp <sanitizer classes> -d out GoldenCorpus.java
-//   java -cp out:<sanitizer classes> GoldenCorpus record <digests-file> [--dump <gz-file>]
+//   java -cp out:<sanitizer classes> GoldenCorpus record <digests-file> [--dump <gz-file>] [--provenance <text>]
 //   java -cp out:<sanitizer classes> GoldenCorpus verify <digests-file>
 //   java -cp out:<sanitizer classes> GoldenCorpus dump <from-index> <to-index> <file>
 
@@ -52,18 +66,20 @@ public final class GoldenCorpus {
   static final String FORMAT = "json-sanitizer golden corpus v1";
   static final long SEED = 0x6a736f6e2d73616eL;  // "json-san"
   static final int FUZZ_COUNT = 200000;
-  static final int BLOCK = 256;
+  static final int BLOCK = 4096;
   static final String[] LEG_NAMES = { "S", "C", "D1", "D3", "M", "R", "B" };
 
   public static void main(String[] args) throws Exception {
     if (args.length < 2) { usage(); }
     String cmd = args[0];
     if ("record".equals(cmd)) {
-      String dump = null;
+      String dump = null, provenance = null;
       for (int i = 2; i < args.length; ++i) {
-        if ("--dump".equals(args[i]) && i + 1 < args.length) { dump = args[++i]; } else { usage(); }
+        if ("--dump".equals(args[i]) && i + 1 < args.length) { dump = args[++i]; }
+        else if ("--provenance".equals(args[i]) && i + 1 < args.length) { provenance = args[++i]; }
+        else { usage(); }
       }
-      record(args[1], dump);
+      record(args[1], dump, provenance);
     } else if ("verify".equals(cmd)) {
       System.exit(verify(args[1]) ? 0 : 1);
     } else if ("dump".equals(cmd) && args.length == 4) {
@@ -74,7 +90,7 @@ public final class GoldenCorpus {
   }
 
   static void usage() {
-    System.err.println("usage: GoldenCorpus record <digests-file> [--dump <gz-file>]");
+    System.err.println("usage: GoldenCorpus record <digests-file> [--dump <gz-file>] [--provenance <text>]");
     System.err.println("       GoldenCorpus verify <digests-file>");
     System.err.println("       GoldenCorpus dump <from-index> <to-index> <file>");
     System.exit(2);
@@ -178,7 +194,7 @@ public final class GoldenCorpus {
 
   static long ms(long t0) { return (System.nanoTime() - t0) / 1000000L; }
 
-  static void record(String file, String dumpFile) throws Exception {
+  static void record(String file, String dumpFile, String provenance) throws Exception {
     Writer dump = null;
     if (dumpFile != null) {
       dump = new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(dumpFile), 1 << 16), StandardCharsets.UTF_8);
@@ -191,6 +207,7 @@ public final class GoldenCorpus {
     w.println("# " + header());
     w.println("# recorded-on " + System.getProperty("java.vendor") + " " + System.getProperty("java.version")
         + " (" + System.getProperty("java.vm.name") + ")");
+    if (provenance != null) { w.println("# provenance " + provenance); }
     for (Block b : r.blocks) { w.println(b.line()); }
     w.println("total " + r.inputs + " " + r.total);
     w.close();
