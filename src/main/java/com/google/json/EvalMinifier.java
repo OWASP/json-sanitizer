@@ -17,8 +17,8 @@ package com.google.json;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -68,7 +68,7 @@ public final class EvalMinifier {
 
   @SuppressWarnings("synthetic-access")
   private static CharSequence minify(CharSequence json) {
-    Map<Token, Token> pool = new HashMap<Token, Token>();
+    Map<Token, Token> pool = new LinkedHashMap<Token, Token>();
     int n = json.length();
     for (int i = 0; i < n; ++i) {
       char ch = json.charAt(i);
