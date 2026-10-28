@@ -22,15 +22,25 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Given a string of valid JSON that is going to be parsed via Javascript's
  * {@code eval} builtin, tries to reduce the number of bytes sent over
  * the wire by turning it into a Javascript expression that pools constants.
+ *
+ * @deprecated Its output must be run with {@code eval}, which a strict Content
+ *     Security Policy forbids, and compression makes the savings small.  It
+ *     keeps working; send {@link JsonSanitizer} output and parse it with
+ *     {@code JSON.parse} instead.
  */
+@Deprecated
 public final class EvalMinifier {
+
+  /** Not needed: every method is static. */
+  public EvalMinifier() {
+    // Kept so that existing code that calls it still compiles.
+  }
 
   /**
    * Renders JSON-like content safe for use with Javascript {@code eval}.
@@ -47,7 +57,7 @@ public final class EvalMinifier {
    *   an HTML {@code <script></script>} element or inside an XML
    *   {@code <![CDATA[...]]>} section.
    */
-  public static String minify(String jsonish) {
+  public static String minify(@Nullable String jsonish) {
     JsonSanitizer s = new JsonSanitizer(jsonish);
     s.sanitize();
     return minify(s.toCharSequence()).toString();
@@ -60,7 +70,7 @@ public final class EvalMinifier {
    * @param maximumNestingDepth the maximum nesting depth for the {@link JsonSanitizer}
    * @return see {@link EvalMinifier#minify(String)}
    */
-  public static String minify(String jsonish, int maximumNestingDepth) {
+  public static String minify(@Nullable String jsonish, int maximumNestingDepth) {
     JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
     s.sanitize();
     return minify(s.toCharSequence()).toString();
@@ -249,7 +259,7 @@ public final class EvalMinifier {
 
   private static final class Token implements Comparable<Token> {
     private final int start, end, hashCode;
-    private final @Nonnull CharSequence seq;
+    private final CharSequence seq;
     @Nullable Token prev;
     @Nullable String name;
 

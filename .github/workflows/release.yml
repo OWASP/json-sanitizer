@@ -1,0 +1,72 @@
+name: Release
+
+# Pushing a tag vX.Y.Z (matching the pom's version) builds, tests, signs and
+# stages that version on the Central Portal. Nothing is published here: the
+# job waits for approval on the "release" environment, and a maintainer then
+# publishes the validated deployment in the Central Portal. See docs/RELEASING.md.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  stage:
+    name: Stage ${{ github.ref_name }} on the Central Portal
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Maintainers set required reviewers on this environment (repository settings).
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK 21, Central Portal credentials and the signing key
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_TOKEN_USERNAME
+          server-password: CENTRAL_TOKEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Check the tag names the pom's version
+        run: |
+          version=$(mvn -B -ntp -q org.apache.maven.plugins:maven-help-plugin:3.5.2:evaluate -Dexpression=project.version -DforceStdout)
+          echo "tag $GITHUB_REF_NAME, pom version $version"
+          [ "v$version" = "$GITHUB_REF_NAME" ]
+          case "$version" in *-SNAPSHOT) echo "a SNAPSHOT version cannot be released"; exit 1 ;; esac
+
+      - name: Build, test, sign and stage (not published)
+        env:
+          CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -ntp clean deploy -DperformRelease=true -Dfuzz.seed=6a736f6e2d73616e
+
+      # The library ships with zero runtime dependencies (brief Q6); the published POM is pom.xml.
+      - name: Check the published POM declares no compile or runtime dependency
+        run: |
+          python3 - pom.xml <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+          bad = []
+          for d in ET.parse(sys.argv[1]).getroot().findall("m:dependencies/m:dependency", ns):
+              scope = (d.findtext("m:scope", "compile", ns) or "compile").strip()
+              if scope in ("compile", "runtime"):
+                  bad.append(d.findtext("m:groupId", "", ns) + ":" + d.findtext("m:artifactId", "", ns) + " (" + scope + ")")
+          print("compile/runtime dependencies:", bad or "none")
+          sys.exit(1 if bad else 0)
+          PY

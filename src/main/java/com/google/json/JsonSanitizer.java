@@ -24,6 +24,8 @@ import java.io.Writer;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Given JSON-like content, converts it to valid JSON.
  * This can be attached at either end of a data-pipeline to help satisfy
@@ -59,31 +61,40 @@ import java.nio.charset.Charset;
  * missing close brackets. If an input contains only white-space then the valid
  * JSON string {@code null} is substituted.
  * <p>
- * Brackets may nest at most {@link #DEFAULT_NESTING_DEPTH} levels deep, or as
- * set by the {@code maximumNestingDepth} parameter.  Any array or object that
- * would nest more deeply is replaced with {@code null}, so
- * {@code [[[1]],2]} sanitized with a maximum depth of 2 becomes
- * {@code [[null],2]}.  The sanitizer does not throw on over-deep input.
+ * An array or object nested more deeply than allowed is replaced with
+ * {@code null}, so {@code [[[1]],2]} sanitized with a maximum depth of 2
+ * becomes {@code [[null],2]}.  The sanitizer does not throw on over-deep input.
  *
  * <h2>Output</h2>
- * The output is well-formed JSON as defined by
- * <a href="http://www.ietf.org/rfc/rfc4627.txt">RFC 4627</a>.
- * The output satisfies three additional properties:
+ * The output satisfies these guarantees, which the README lists identically:
  * <ol>
- * <li>The output will not contain the substring (case-insensitively)
- *   {@code "</script"} so can be embedded inside an HTML script element without
- *   further encoding.
- * <li>The output will not contain the substring {@code "]]>"} so can be
- *   embedded inside an XML CDATA section without further encoding.</li>
- * <li>The output is a valid Javascript expression, so can be parsed by
- *   Javascript's <code>eval</code> builtin (after being wrapped in parentheses)
- *   or by <code>JSON.parse</code>.
- *   Specifically, the output will not contain any string literals with embedded
- *   JS newlines (U+2028 Paragraph separator or U+2029 Line separator).
- * <li>The output contains only valid Unicode scalar values
- *   (no isolated UTF-16 surrogates) that are
- *   <a href="http://www.w3.org/TR/xml/#charsets">allowed in XML</a> unescaped.
+ * <li>It is exactly one JSON value as defined by
+ *   <a href="https://www.rfc-editor.org/rfc/rfc8259">RFC 8259</a>.  Anything
+ *   after the first complete value, a top-level comma or an unmatched close
+ *   bracket is dropped: {@code [1]],alert(1)} becomes {@code [1]}.
+ * <li>It does not contain {@code <script}, {@code </script}, {@code <!--} or
+ *   {@code -->}, in any case, so it can be embedded in an HTML script element
+ *   without further encoding.
+ * <li>It does not contain {@code ]]>}, so it can be embedded in an XML CDATA
+ *   section without further encoding.  ({@code <![CDATA[} itself is not
+ *   escaped.)
+ * <li>It is a valid JavaScript expression, so it can be parsed by
+ *   {@code JSON.parse}, or by {@code eval} after being wrapped in parentheses;
+ *   no string contains a raw U+2028 or U+2029.
+ * <li>It contains no raw control characters, lone UTF-16 surrogates, U+FFFE or
+ *   U+FFFF; in strings these are written as <code>&#92;u</code><i>XXXX</i> escapes, so
+ *   the output is valid Unicode and allowed in XML.  An escaped lone surrogate
+ *   is valid RFC 8259 but not I-JSON (RFC 7493).
+ * <li>Sanitizing the output again returns it unchanged.
  * </ol>
+ * <p>
+ * Brackets nest at most {@link #DEFAULT_NESTING_DEPTH} levels deep, or as set
+ * by a {@code maximumNestingDepth} parameter (at most
+ * {@link #MAXIMUM_NESTING_DEPTH}); a deeper array or object is replaced by
+ * {@code null}.  Hex and octal literals of more than 1024 significant digits
+ * become {@code 1e999}, JavaScript's Infinity.  The Reader and InputStream
+ * overloads read at most {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars unless
+ * given a {@code maximumInputLength}.  The library runs on Java 8 and later.
  *
  * <h2>Security</h2>
  * Since the output is well-formed JSON, passing it to <code>eval</code> will
@@ -130,7 +141,7 @@ public final class JsonSanitizer {
    * @param jsonish JSON-like content.
    * @return embeddable JSON
    */
-  public static String sanitize(String jsonish) {
+  public static String sanitize(@Nullable String jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
@@ -142,7 +153,7 @@ public final class JsonSanitizer {
    * @param maximumNestingDepth maximum nesting depth.
    * @return embeddable JSON
    */
-  public static String sanitize(String jsonish, int maximumNestingDepth) {
+  public static String sanitize(@Nullable String jsonish, int maximumNestingDepth) {
     JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
     s.sanitize();
     return s.toString();
@@ -160,7 +171,7 @@ public final class JsonSanitizer {
    * @return embeddable JSON, always as an immutable {@code String}, never
    *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
-  public static String sanitize(CharSequence jsonish) {
+  public static String sanitize(@Nullable CharSequence jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
@@ -174,7 +185,7 @@ public final class JsonSanitizer {
    *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
   public static String sanitize(
-      CharSequence jsonish, int maximumNestingDepth) {
+      @Nullable CharSequence jsonish, int maximumNestingDepth) {
     if (jsonish == null) {
       return sanitize((String) null, maximumNestingDepth);
     }
@@ -399,11 +410,11 @@ public final class JsonSanitizer {
 
   private static final boolean SUPER_VERBOSE_AND_SLOW_LOGGING = false;
 
-  JsonSanitizer(String jsonish) {
+  JsonSanitizer(@Nullable String jsonish) {
     this(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
-  JsonSanitizer(String jsonish, int maximumNestingDepth) {
+  JsonSanitizer(@Nullable String jsonish, int maximumNestingDepth) {
     this.maximumNestingDepth = Math.min(Math.max(1, maximumNestingDepth),MAXIMUM_NESTING_DEPTH);
     if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
       System.err.println("\n" + jsonish + "\n========");
