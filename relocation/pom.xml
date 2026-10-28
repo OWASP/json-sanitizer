@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <!--
+    Relocation POM, published once to the old coordinates (docs/RELEASING.md,
+    "Relocation"). Releases up to 1.2.3 were com.mikesamuel:json-sanitizer; from 1.3.0
+    the library is org.owasp:json-sanitizer. A build that asks for
+    com.mikesamuel:json-sanitizer:1.3.0 gets org.owasp:json-sanitizer:1.3.0 and a
+    warning to change its coordinates, and update tools that watch the old coordinates
+    see that 1.3.0 exists. This file is not part of the main build.
+  -->
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.mikesamuel</groupId>
+  <artifactId>json-sanitizer</artifactId>
+  <version>1.3.0</version>
+  <packaging>pom</packaging>
+
+  <name>json-sanitizer (moved to org.owasp:json-sanitizer)</name>
+  <description>
+This artifact has moved to org.owasp:json-sanitizer. Change the groupId in your build.
+  </description>
+  <url>https://github.com/OWASP/json-sanitizer</url>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/OWASP/json-sanitizer.git</connection>
+    <developerConnection>scm:git:https://github.com/OWASP/json-sanitizer.git</developerConnection>
+    <url>https://github.com/OWASP/json-sanitizer</url>
+  </scm>
+
+  <developers>
+    <developer>
+      <id>mikesamuel</id>
+      <name>Mike Samuel</name>
+      <email>mikesamuel@gmail.com</email>
+    </developer>
+    <developer>
+      <id>jmanico</id>
+      <name>Jim Manico</name>
+      <organization>OWASP</organization>
+      <organizationUrl>https://owasp.org</organizationUrl>
+      <roles>
+        <role>maintainer</role>
+      </roles>
+    </developer>
+  </developers>
+
+  <distributionManagement>
+    <relocation>
+      <groupId>org.owasp</groupId>
+      <artifactId>json-sanitizer</artifactId>
+      <message>json-sanitizer moved to org.owasp:json-sanitizer in 1.3.0; change the groupId.</message>
+    </relocation>
+  </distributionManagement>
+
+  <!-- Same signing and staging as the main pom's release profile: staged, never auto-published. -->
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>3.2.8</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.12.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>false</autoPublish>
+          <waitUntil>validated</waitUntil>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

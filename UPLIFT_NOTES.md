@@ -269,6 +269,8 @@ No Blocker. Confirmed: guarantees 1, 2, 3, 6 under 1.2 million fuzzed outputs (J
 **Follow-up (2026-10-28, after PR #44).** The failing OSS-Fuzz build of 06:42 UTC failed only on the two enforcer rules; #44 merged at 08:32 UTC, so the first daily build of the fix is the next day's. `build.sh` run in full locally on master `64a4e3d` (Maven 3.6.3, JDK 17) passed, and OSS-Fuzz's three fuzzers ran 150 s each against the jar (10.4 million inputs, no finding). The job did not compile those fuzzers before, which is what the guard above adds.
 - Phase 1's "JDK 21+ to build" (residuals above) is superseded: JDK 17 or newer builds.
 
+**New coordinates (2026-10-28, owner decision, brief Q9 reopened).** The groupId moves from `com.mikesamuel` (Mike Samuel's namespace) to `org.owasp`, the OWASP Foundation's, for which the owner already publishes other OWASP projects. Only the groupId changes: artifactId, jar name (OSS-Fuzz's `build.sh` copies `target/json-sanitizer-$VERSION.jar`), Java package and `Automatic-Module-Name` are unchanged. `relocation/pom.xml` (`com.mikesamuel:json-sanitizer:1.3.0`, POM only, not part of the build) is published once with 1.3.0; checked in a scratch local repository: a consumer naming `com.mikesamuel:json-sanitizer:1.3.0` resolves `org.owasp:json-sanitizer:1.3.0` with Maven's relocation warning. Publishing it still needs `com.mikesamuel` rights, through Mike, but only once.
+
 **CI cost (brief Q11).** The repository is public, so GitHub-hosted runner minutes are free. The real costs were duplicated work and wait time:
 
 - CI now runs on pushes to master and on pull requests only; before, a branch with an open pull request ran everything twice (push and pull_request events).
