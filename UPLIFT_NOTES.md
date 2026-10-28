@@ -203,3 +203,57 @@ Verdict: no Critical or High; none of the seven fixes opens an embed-safety bypa
 - The owner has not yet signed off `APPROVED_DIFFERENCES.md`; the decisions were delegated.
 - Q4c changed from the brief's first proposal (64 Mi) to 16 Mi and, after review, to 4 Mi; callers with larger bodies use the `maximumInputLength` overloads.
 - `GoldenCorpusTest` now costs 44 to 50 s per leg (both implementations).
+
+# Phase 4: public contract, packaging and release
+
+- **Date:** 2026-10-28
+- **Commits:** `beaa1e6`, `17af472` and the review fixes after them; branch `public-contract-and-release`.
+- **Decisions:** Q2 (1.3.0), Q5 (deprecate `EvalMinifier`), Q6 (JSpecify, `provided`), Q7 (`com.google.json`), Q8 (CDATA wording), Q13 (lone surrogates kept, documented), decided by Claude on the owner's delegation. Q9 (namespace and signing-key ownership) is the owner's to answer; the brief records that it gates only staging.
+- **No release was cut.** The owner said: merge to master, but no release until ready. `pom.xml` is `1.3.0-SNAPSHOT`.
+
+## What changed
+
+| Area | Change |
+|---|---|
+| Nullness | jsr305 replaced by JSpecify 1.0.1 (`provided`); the package is `@NullMarked`; every `sanitize`/`minify` String or CharSequence parameter, and the two fields that hold null, are `@Nullable`. jsr305 stays in test scope for the legacy oracle and FuzzyTest. |
+| Jar | `Automatic-Module-Name: com.google.json`; the POM declares no compile or runtime dependency. |
+| EvalMinifier | `@Deprecated` with the reason; keeps working; a documented public constructor replaces the implicit one. |
+| Contract | One list of six output guarantees, generated into the README and the `JsonSanitizer` javadoc from one source, then the same paragraph on nesting, numbers, numeric keys, stream limits and Java 8. Every concrete example in it was run against the build. |
+| Release | OSSRH `distributionManagement` removed; `central-publishing-maven-plugin` 0.12.0 stages with `autoPublish=false`; `release.yml` on a `v*` tag: a secret-free `verify` job (tag on master, tag names the version, POM check, every test on JDK 21 and Java 8), then a `stage` job gated by the `release` environment that signs and stages only. `docs/RELEASING.md` replaces `RELEASE-checklist.sh` and lists the settings the gate depends on. HTTPS SCM and license URLs. |
+| Docs | `CHANGELOG.md` for 1.3.0 (all output changes since 1.2.3), `docs/getting_started.md` pins a version. |
+
+Resolved from Phase 1's residuals: the two javadoc doclint warnings (`package-info` and `EvalMinifier` now have comments; javadoc now warns only about `ElementType.MODULE`, see below) and `RELEASE-checklist.sh` (removed).
+
+## Proof
+
+Zulu 8 and Homebrew 21 locally, and Temurin 8, 11, 17, 21, 25 on CI (run 40610692346, before the review fixes): 61 tests, 53 of 53 required, golden corpus 0 unexplained, fuzz job about 1 million inputs with no finding. `jar --describe-module` reports `com.google.json`. The release profile validates; `actionlint` is clean.
+
+## Architecture-critic review (independent, 2026-10-28)
+
+No Blocker. Confirmed: guarantees 1, 2, 3, 6 under 1.2 million fuzzed outputs (Jackson, `JSON.parse`, `eval` in node), a reproducible jar, a binary-compatible API (methods only added), correct `@Nullable` placement, javac consumers fine without JSpecify, `autoPublish=false` a real stop.
+
+| # | Finding | Disposition |
+|---|---|---|
+| H1 | Guarantee 5 ("no raw control characters") was false: raw LF/tab/CR between tokens, raw U+007F to U+009F. | **Fixed:** states exactly what is escaped inside strings, what whitespace appears between tokens, and that U+007F to U+009F pass through (XML 1.0 allows them). |
+| H2 | CHANGELOG claimed "byte-for-byte the same as 1.2.3, which the build checks"; the build compares with `d9b2768`, and 1.2.3 differs also in minifier pooling and over-deep input (1.2.3 threw). | **Fixed:** names the real baseline and lists both changes since 1.2.3 as output changes. |
+| H3 | The manual gate was bypassable: repository secrets, any tag, self-approval. | **Fixed (docs):** `RELEASING.md` requires environment secrets, `v*` tags only, Prevent self-review and a tag ruleset; these are repository settings for an administrator. |
+| M1 | `eval` fails on an object repeating `__proto__`. | **Fixed (docs):** guarantee 4 says so; changing the output would need its own approval. |
+| M2 | Secrets were present while tests ran; approval came before any check. | **Fixed:** two jobs, secret-free `verify` first. |
+| M3 | POM check ran after staging and ignored profiles. | **Fixed:** in `verify`, profiles included; RELEASING says publish only on a green run. |
+| M4 | Numeric keys past the int range are kept as written. | **Fixed (docs)** in both places (Phase 3's I-4). |
+| L1 | The paragraphs after the lists differed. | **Fixed:** one source generates both. |
+| L2 | Idempotence needs the same depth and a large enough input limit. | **Fixed (docs).** |
+| L3 | Two private fields hold null under `@NullMarked`. | **Fixed:** annotated. |
+| L4 | `-Werror` builds fail on the deprecation. | **Fixed (CHANGELOG).** |
+| L5 | `provided` JSpecify and Kotlin/NullAway. | **Fixed (README):** add the dependency yourself to have it checked. |
+| L6 | The release job did not require the tag to be on master or run Java 8. | **Fixed** in `verify`. |
+| L7 | Signing and upload unexercised; the RC is not separately fuzzed. | **Recorded:** needs Q9 credentials; `verify` replays the golden corpus and seeds on the tagged commit, whose PR CI ran the fuzz job. |
+| L8 | `1.3.0` is not on Central yet. | **Fixed (docs).** |
+| Nits | Stale pom comments, heading name, "read at most", the CharSequence copy, `persist-credentials`, stale 16 Mi in analysis notes. | **Fixed.** |
+
+## Residuals
+
+- **Q9** and the repository settings in `docs/RELEASING.md` (environment secrets, reviewers, tag rules) are for the owner; until then `release.yml` cannot sign or stage, and the staging exit criterion stays unticked.
+- javadoc warns `unknown enum constant ElementType.MODULE`: JSpecify's `@NullMarked` can target modules, which `--release 8` does not know. Harmless; consumers compiling with JSpecify on Java 8 may see it too.
+- gpg 3.2.8 signing and the Central Portal upload have never run.
+- Phase 5 (internal cleanup) is not started: its entry criterion is a published 1.3.0.

@@ -7,10 +7,7 @@
   <artifactId>json-sanitizer</artifactId>
   <packaging>jar</packaging>
 
-  <!--
-    When the version ends with "-SNAPSHOT", then `mvn deploy` moves it to
-    the snapshot directory instead of into staging proper.
-   -->
+  <!-- Releases: docs/RELEASING.md. A -SNAPSHOT version cannot be released. -->
   <version>1.3.0-SNAPSHOT</version>
   <name>json-sanitizer</name>
   <description>
@@ -286,8 +283,7 @@ encoding and make it easier to embed your JSON in HTML and XML.
 
   <reporting>
     <plugins>
-      <!-- `mvn compile site` will generate target/site/findbugs.html -->
-      <!-- http://gleclaire.github.io/findbugs-maven-plugin/dependency-info.html -->
+      <!-- `mvn site` generates the SpotBugs report under target/site. -->
       <plugin>
         <groupId>com.github.spotbugs</groupId>
         <artifactId>spotbugs-maven-plugin</artifactId>

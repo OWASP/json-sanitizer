@@ -60,10 +60,6 @@ import org.jspecify.annotations.Nullable;
  * The sanitizer fixes missing punctuation, end quotes, and mismatched or
  * missing close brackets. If an input contains only white-space then the valid
  * JSON string {@code null} is substituted.
- * <p>
- * An array or object nested more deeply than allowed is replaced with
- * {@code null}, so {@code [[[1]],2]} sanitized with a maximum depth of 2
- * becomes {@code [[null],2]}.  The sanitizer does not throw on over-deep input.
  *
  * <h2>Output</h2>
  * The output satisfies these guarantees, which the README lists identically:
@@ -78,23 +74,33 @@ import org.jspecify.annotations.Nullable;
  * <li>It does not contain {@code ]]>}, so it can be embedded in an XML CDATA
  *   section without further encoding.  ({@code <![CDATA[} itself is not
  *   escaped.)
- * <li>It is a valid JavaScript expression, so it can be parsed by
- *   {@code JSON.parse}, or by {@code eval} after being wrapped in parentheses;
- *   no string contains a raw U+2028 or U+2029.
- * <li>It contains no raw control characters, lone UTF-16 surrogates, U+FFFE or
- *   U+FFFF; in strings these are written as <code>&#92;u</code><i>XXXX</i> escapes, so
- *   the output is valid Unicode and allowed in XML.  An escaped lone surrogate
- *   is valid RFC 8259 but not I-JSON (RFC 7493).
- * <li>Sanitizing the output again returns it unchanged.
+ * <li>{@code JSON.parse} accepts it.  It is also a JavaScript expression that
+ *   {@code eval} can run after it is wrapped in parentheses, except that an
+ *   object repeating the key {@code __proto__} is a syntax error there.  No
+ *   string contains a raw U+2028 or U+2029.
+ * <li>Inside strings, U+0000 to U+001F, lone UTF-16 surrogates, U+2028, U+2029,
+ *   U+FFFE and U+FFFF are written as <code>&#92;u</code><i>XXXX</i> escapes;
+ *   between tokens only space, tab, line feed and carriage return appear.
+ *   Other characters, U+007F to U+009F included, appear as they are, so the
+ *   output is valid Unicode and allowed in XML 1.0.  An escaped lone
+ *   surrogate is valid RFC 8259 but not I-JSON (RFC 7493).
+ * <li>Sanitizing it again with the same {@code maximumNestingDepth} returns it
+ *   unchanged (through a Reader or InputStream overload, with a
+ *   {@code maximumInputLength} at least as long as the output).
  * </ol>
  * <p>
- * Brackets nest at most {@link #DEFAULT_NESTING_DEPTH} levels deep, or as set
- * by a {@code maximumNestingDepth} parameter (at most
- * {@link #MAXIMUM_NESTING_DEPTH}); a deeper array or object is replaced by
+ * Brackets nest at most {@link #DEFAULT_NESTING_DEPTH} levels deep by default,
+ * or as set by a {@code maximumNestingDepth} parameter, which is clamped to 1
+ * to {@link #MAXIMUM_NESTING_DEPTH}; a deeper array or object is replaced by
  * {@code null}.  Hex and octal literals of more than 1024 significant digits
- * become {@code 1e999}, JavaScript's Infinity.  The Reader and InputStream
- * overloads read at most {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars unless
- * given a {@code maximumInputLength}.  The library runs on Java 8 and later.
+ * become {@code 1e999}, JavaScript's Infinity.  Numeric object keys are
+ * converted to a string form textually: an exponent outside the double range
+ * is kept (<code>{1e400:0}</code> becomes <code>{"1e+400":0}</code>, not
+ * {@code "Infinity"}), and one beyond the int range is kept as written
+ * (<code>{1e2147483648:0}</code> becomes <code>{"1e2147483648":0}</code>), so keys
+ * of equal value can differ.  The Reader and InputStream overloads accept at
+ * most {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars unless given a
+ * {@code maximumInputLength}.  The library runs on Java 8 and later.
  *
  * <h2>Security</h2>
  * Since the output is well-formed JSON, passing it to <code>eval</code> will
@@ -110,10 +116,11 @@ import org.jspecify.annotations.Nullable;
  * unintended side-effects.
  *
  * <h2>Efficiency</h2>
- * The sanitize method will return the input string without allocating a new
- * buffer when the input is already valid JSON that satisfies the properties
- * above.  Thus, if used on input that is usually well formed, it has minimal
- * memory overhead.
+ * {@code sanitize(String)} returns the input string itself, without allocating
+ * a new buffer, when the input is already valid JSON that satisfies the
+ * properties above.  Thus, if used on input that is usually well formed, it
+ * has minimal memory overhead.  ({@code sanitize(CharSequence)} always copies
+ * its input once.)
  * <p>The sanitize method takes O(n) time where n is the length in UTF-16
  * code-units.
  */
@@ -394,14 +401,14 @@ public final class JsonSanitizer {
    * {@code isMap[i]} when {@code 0 <= i && i < bracketDepth} is true iff
    * the i-th open bracket was a <code>'{'</code>, not a <code>'['</code>.
    */
-  private boolean[] isMap;
+  private boolean @Nullable [] isMap;
   /**
    * If non-null, then contains the sanitized form of
    * {@code jsonish.substring(0, cleaned)}.
    * If {@code null}, then no unclean constructs have been found in
    * {@code jsonish} yet.
    */
-  private StringBuilder sanitizedJson;
+  private @Nullable StringBuilder sanitizedJson;
   /**
    * The length of the prefix of {@link #jsonish} that has been written onto
    * {@link #sanitizedJson}.

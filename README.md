@@ -70,18 +70,18 @@ The output satisfies these guarantees, which the `JsonSanitizer` javadoc lists i
  1. It is exactly one JSON value as defined by [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259). Anything after the first complete value, a top-level comma or an unmatched close bracket is dropped: `[1]],alert(1)` becomes `[1]`.
  2. It does not contain `<script`, `</script`, `<!--` or `-->`, in any case, so it can be embedded in an HTML script element without further encoding.
  3. It does not contain `]]>`, so it can be embedded in an XML CDATA section without further encoding. (`<![CDATA[` itself is not escaped.)
- 4. It is a valid JavaScript expression, so it can be parsed by `JSON.parse`, or by `eval` after being wrapped in parentheses; no string contains a raw U+2028 or U+2029.
- 5. It contains no raw control characters, lone UTF-16 surrogates, U+FFFE or U+FFFF; in strings these are written as `\u`*XXXX* escapes, so the output is valid Unicode and allowed in XML. An escaped lone surrogate is valid RFC 8259 but not [I-JSON](https://www.rfc-editor.org/rfc/rfc7493).
- 6. Sanitizing the output again returns it unchanged.
+ 4. `JSON.parse` accepts it. It is also a JavaScript expression that `eval` can run after it is wrapped in parentheses, except that an object repeating the key `__proto__` is a syntax error there. No string contains a raw U+2028 or U+2029.
+ 5. Inside strings, U+0000 to U+001F, lone UTF-16 surrogates, U+2028, U+2029, U+FFFE and U+FFFF are written as `\u`*XXXX* escapes; between tokens only space, tab, line feed and carriage return appear. Other characters, U+007F to U+009F included, appear as they are, so the output is valid Unicode and allowed in XML 1.0. An escaped lone surrogate is valid RFC 8259 but not [I-JSON](https://www.rfc-editor.org/rfc/rfc7493).
+ 6. Sanitizing it again with the same `maximumNestingDepth` returns it unchanged (through a Reader or InputStream overload, with a `maximumInputLength` at least as long as the output).
 
-Brackets nest at most 64 levels deep by default (`DEFAULT_NESTING_DEPTH`), or as set by a `maximumNestingDepth` parameter (at most 4096); a deeper array or object is replaced by `null`. Hex and octal literals of more than 1024 significant digits become `1e999`, JavaScript's Infinity. Numeric object keys are converted to their canonical string form textually: an exponent outside the double range is kept (`{1e400:0}` becomes `{"1e+400":0}`), not turned into `"Infinity"`.
+Brackets nest at most 64 levels deep by default (`DEFAULT_NESTING_DEPTH`), or as set by a `maximumNestingDepth` parameter, which is clamped to 1 to 4096; a deeper array or object is replaced by `null`. Hex and octal literals of more than 1024 significant digits become `1e999`, JavaScript's Infinity. Numeric object keys are converted to a string form textually: an exponent outside the double range is kept (`{1e400:0}` becomes `{"1e+400":0}`, not `"Infinity"`), and one beyond the int range is kept as written (`{1e2147483648:0}` becomes `{"1e2147483648":0}`), so keys of equal value can differ. The Reader and InputStream overloads accept at most 4 Mi chars (`DEFAULT_MAXIMUM_INPUT_LENGTH`) unless given a `maximumInputLength`. The library runs on Java 8 and later.
 
 
 ## Requirements and limits
 
- * **Java 8 or later.** The jar's module name is `com.google.json`; it has no runtime dependencies.
+ * **Java 8 or later.** The jar's module name is `com.google.json`; it has no runtime dependencies. Its nullness annotations are [JSpecify](https://jspecify.dev/), declared `provided`: Kotlin or NullAway users who want them checked add `org.jspecify:jspecify:1.0.1` to their own build.
  * `sanitize(String)` and `sanitize(CharSequence)` take time linear in the input. `sanitize(CharSequence)` always returns a new `String`.
- * `sanitize(Reader, Appendable)` and `sanitize(InputStream, OutputStream)` (UTF-8) read the whole input into memory, and output can be six times as long. They reject input longer than 4 Mi chars (`DEFAULT_MAXIMUM_INPUT_LENGTH`) with an `IOException` and write nothing; overloads with a `maximumInputLength` parameter change the limit. Malformed UTF-8 becomes U+FFFD; a byte-order mark before the value is dropped.
+ * `sanitize(Reader, Appendable)` and `sanitize(InputStream, OutputStream)` (UTF-8) read the whole input into memory, and output can be six times as long. They reject input longer than 4 Mi chars (`DEFAULT_MAXIMUM_INPUT_LENGTH`) with an `IOException` and write nothing (up to 8 Ki chars past the limit may be read first); overloads with a `maximumInputLength` parameter change the limit. Malformed UTF-8 becomes U+FFFD; a byte-order mark before the value is dropped.
 
 
 ## EvalMinifier (deprecated)
@@ -118,10 +118,10 @@ addToAdminstratorsGroup(myValue.propertyFromUntrustedSource);
 
 # Performance
 
-The sanitize method will return the input string without allocating a new
-buffer when the input is already valid JSON that satisfies the properties
+`sanitize(String)` returns the input string itself, without allocating a new
+buffer, when the input is already valid JSON that satisfies the properties
 above.  Thus, if used on input that is usually well formed, it has minimal
-memory overhead.
+memory overhead.  (`sanitize(CharSequence)` always copies its input once.)
 
 The sanitize method takes O(n) time where n is the length of the input
 in UTF-16 code-units, including for very long number literals.

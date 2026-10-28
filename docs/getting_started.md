@@ -15,7 +15,8 @@ or you can let your favorite java package manager handle it for you via
 ```
 
 Pin an exact version, as above: an open range such as `[1.0,)` picks up new
-releases unreviewed. Version 1.3.0 needs Java 8 or later; it changes the output
+releases unreviewed. (1.3.0 is the next release; until it is on Maven Central,
+the latest is 1.2.3.) Version 1.3.0 needs Java 8 or later; it changes the output
 for a few malformed or hostile inputs, listed in the
 [changelog](https://github.com/OWASP/json-sanitizer/blob/master/CHANGELOG.md).
 
