@@ -264,7 +264,9 @@ No Blocker. Confirmed: guarantees 1, 2, 3, 6 under 1.2 million fuzzed outputs (J
 
 - The enforcer now requires Maven `[3.6.3,4)` and JDK `[17,)`. CI still builds on 21.
 - Proof: OSS-Fuzz's `build.sh` steps run locally on Maven 3.6.3 (checksum-verified) and Homebrew JDK 17: `help:evaluate`, then `mvn package` with 61 tests passing and the golden corpus at 0 unexplained, then `dependency:copy` of gson 2.8.6. OSS-Fuzz's three fuzzers (`DenylistFuzzer`, `IdempotenceFuzzer`, `ValidJsonFuzzer`) compile against the new jar.
-- Guard: CI job `oss-fuzz-build` builds the same way on every pull request and master push.
+- Guard: CI job `oss-fuzz-build` builds the same way on every pull request and master push. Since the follow-up below it also runs the rest of `build.sh`: it copies gson 2.8.6 and compiles every `*Fuzzer.java` in google/oss-fuzz `projects/json-sanitizer` (fetched at their current revision) against the jar.
+
+**Follow-up (2026-10-28, after PR #44).** The failing OSS-Fuzz build of 06:42 UTC failed only on the two enforcer rules; #44 merged at 08:32 UTC, so the first daily build of the fix is the next day's. `build.sh` run in full locally on master `64a4e3d` (Maven 3.6.3, JDK 17) passed, and OSS-Fuzz's three fuzzers ran 150 s each against the jar (10.4 million inputs, no finding). The job did not compile those fuzzers before, which is what the guard above adds.
 - Phase 1's "JDK 21+ to build" (residuals above) is superseded: JDK 17 or newer builds.
 
 **CI cost (brief Q11).** The repository is public, so GitHub-hosted runner minutes are free. The real costs were duplicated work and wait time:

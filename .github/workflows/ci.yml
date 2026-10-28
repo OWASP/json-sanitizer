@@ -174,3 +174,26 @@ jobs:
           version=$(mvn -B org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate -Dexpression=project.version -q -DforceStdout)
           mvn -B package -Dfuzz.seed=6a736f6e2d73616e
           ls -l "target/json-sanitizer-$version.jar"
+          echo "PROJECT_JAR=target/json-sanitizer-$version.jar" >> "$GITHUB_ENV"
+
+      # The rest of build.sh: copy gson, then compile every *Fuzzer.java that OSS-Fuzz keeps for this
+      # project against the jar, so an API change that breaks OSS-Fuzz's own fuzzers fails here too.
+      # Their current sources are fetched on purpose: the point is to track what OSS-Fuzz builds.
+      # They are only compiled, never run, in a job that holds no secrets.
+      - name: Compile OSS-Fuzz's fuzzers against the jar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          out="$RUNNER_TEMP/oss-fuzz-out"
+          mkdir -p "$out"
+          mvn -B -q dependency:copy -Dartifact=com.google.code.gson:gson:2.8.6 -DoutputDirectory="$out"
+          mvn -B -q dependency:build-classpath -DincludeArtifactIds=jazzer-api -Dmdep.outputFile="$out/jazzer-api.classpath"
+          gh api repos/google/oss-fuzz/contents/projects/json-sanitizer \
+            -q '.[] | select(.name | endswith("Fuzzer.java")) | .download_url' > "$out/fuzzers.txt"
+          test -s "$out/fuzzers.txt"
+          classpath="$PROJECT_JAR:$out/gson-2.8.6.jar:$(cat "$out/jazzer-api.classpath")"
+          while read -r url; do
+            curl -fsSL -o "$out/${url##*/}" "$url"
+            javac -d "$out" -cp "$classpath" "$out/${url##*/}"
+            echo "compiled ${url##*/}"
+          done < "$out/fuzzers.txt"
