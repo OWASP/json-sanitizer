@@ -1,0 +1,112 @@
+name: Release
+
+# Pushing a tag vX.Y.Z on master (matching the pom's version) verifies that
+# commit, then, after a maintainer approves the "release" environment, signs
+# and stages it on the Central Portal. Nothing is published here: a maintainer
+# publishes the validated deployment in the Central Portal by hand.
+# docs/RELEASING.md has the one-time settings this depends on.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # No environment and no secrets: everything that runs tests or third-party
+  # test code runs here, before anyone is asked to approve.
+  verify:
+    name: Verify ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the tagged commit is on master
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+
+      - name: Set up test JDK 8
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 8
+
+      - name: Set up build JDK 21
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Check the tag names the pom's version
+        run: |
+          version=$(mvn -B -ntp -q org.apache.maven.plugins:maven-help-plugin:3.5.2:evaluate -Dexpression=project.version -DforceStdout)
+          echo "tag $GITHUB_REF_NAME, pom version $version"
+          [ "v$version" = "$GITHUB_REF_NAME" ]
+          case "$version" in *-SNAPSHOT) echo "a SNAPSHOT version cannot be released"; exit 1 ;; esac
+
+      # The library ships with zero runtime dependencies (brief Q6); the published POM is pom.xml.
+      - name: Check the published POM declares no compile or runtime dependency
+        run: |
+          python3 - pom.xml <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+          root = ET.parse(sys.argv[1]).getroot()
+          deps = root.findall("m:dependencies/m:dependency", ns) \
+              + root.findall("m:profiles/m:profile/m:dependencies/m:dependency", ns)
+          bad = []
+          for d in deps:
+              scope = (d.findtext("m:scope", "compile", ns) or "compile").strip()
+              if scope in ("compile", "runtime"):
+                  bad.append(d.findtext("m:groupId", "", ns) + ":" + d.findtext("m:artifactId", "", ns) + " (" + scope + ")")
+          print("compile/runtime dependencies:", bad or "none")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: Run every test, golden corpus included, on JDK 21 and on Java 8
+        run: |
+          mvn -B -ntp clean verify -Dfuzz.seed=6a736f6e2d73616e
+          mvn -B -ntp clean verify -Dfuzz.seed=6a736f6e2d73616e -Djvm="$JAVA_HOME_8_${{ runner.arch }}/bin/java"
+
+  # The only job that sees the signing key and the Central Portal token, and
+  # only after a maintainer approves the "release" environment.
+  stage:
+    name: Sign and stage ${{ github.ref_name }} on the Central Portal (not published)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 21, Central Portal credentials and the signing key
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          server-id: central
+          server-username: CENTRAL_TOKEN_USERNAME
+          server-password: CENTRAL_TOKEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Build, sign and stage (verified by the job before; not published)
+        env:
+          CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -ntp clean deploy -DperformRelease=true -DskipTests

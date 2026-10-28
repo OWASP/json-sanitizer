@@ -24,6 +24,8 @@ import java.io.Writer;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Given JSON-like content, converts it to valid JSON.
  * This can be attached at either end of a data-pipeline to help satisfy
@@ -58,32 +60,47 @@ import java.nio.charset.Charset;
  * The sanitizer fixes missing punctuation, end quotes, and mismatched or
  * missing close brackets. If an input contains only white-space then the valid
  * JSON string {@code null} is substituted.
- * <p>
- * Brackets may nest at most {@link #DEFAULT_NESTING_DEPTH} levels deep, or as
- * set by the {@code maximumNestingDepth} parameter.  Any array or object that
- * would nest more deeply is replaced with {@code null}, so
- * {@code [[[1]],2]} sanitized with a maximum depth of 2 becomes
- * {@code [[null],2]}.  The sanitizer does not throw on over-deep input.
  *
  * <h2>Output</h2>
- * The output is well-formed JSON as defined by
- * <a href="http://www.ietf.org/rfc/rfc4627.txt">RFC 4627</a>.
- * The output satisfies three additional properties:
+ * The output satisfies these guarantees, which the README lists identically:
  * <ol>
- * <li>The output will not contain the substring (case-insensitively)
- *   {@code "</script"} so can be embedded inside an HTML script element without
- *   further encoding.
- * <li>The output will not contain the substring {@code "]]>"} so can be
- *   embedded inside an XML CDATA section without further encoding.</li>
- * <li>The output is a valid Javascript expression, so can be parsed by
- *   Javascript's <code>eval</code> builtin (after being wrapped in parentheses)
- *   or by <code>JSON.parse</code>.
- *   Specifically, the output will not contain any string literals with embedded
- *   JS newlines (U+2028 Paragraph separator or U+2029 Line separator).
- * <li>The output contains only valid Unicode scalar values
- *   (no isolated UTF-16 surrogates) that are
- *   <a href="http://www.w3.org/TR/xml/#charsets">allowed in XML</a> unescaped.
+ * <li>It is exactly one JSON value as defined by
+ *   <a href="https://www.rfc-editor.org/rfc/rfc8259">RFC 8259</a>.  Anything
+ *   after the first complete value, a top-level comma or an unmatched close
+ *   bracket is dropped: {@code [1]],alert(1)} becomes {@code [1]}.
+ * <li>It does not contain {@code <script}, {@code </script}, {@code <!--} or
+ *   {@code -->}, in any case, so it can be embedded in an HTML script element
+ *   without further encoding.
+ * <li>It does not contain {@code ]]>}, so it can be embedded in an XML CDATA
+ *   section without further encoding.  ({@code <![CDATA[} itself is not
+ *   escaped.)
+ * <li>{@code JSON.parse} accepts it.  It is also a JavaScript expression that
+ *   {@code eval} can run after it is wrapped in parentheses, except that an
+ *   object repeating the key {@code __proto__} is a syntax error there.  No
+ *   string contains a raw U+2028 or U+2029.
+ * <li>Inside strings, U+0000 to U+001F, lone UTF-16 surrogates, U+2028, U+2029,
+ *   U+FFFE and U+FFFF are written as <code>&#92;u</code><i>XXXX</i> escapes;
+ *   between tokens only space, tab, line feed and carriage return appear.
+ *   Other characters, U+007F to U+009F included, appear as they are, so the
+ *   output is valid Unicode and allowed in XML 1.0.  An escaped lone
+ *   surrogate is valid RFC 8259 but not I-JSON (RFC 7493).
+ * <li>Sanitizing it again with the same {@code maximumNestingDepth} returns it
+ *   unchanged (through a Reader or InputStream overload, with a
+ *   {@code maximumInputLength} at least as long as the output).
  * </ol>
+ * <p>
+ * Brackets nest at most {@link #DEFAULT_NESTING_DEPTH} levels deep by default,
+ * or as set by a {@code maximumNestingDepth} parameter, which is clamped to 1
+ * to {@link #MAXIMUM_NESTING_DEPTH}; a deeper array or object is replaced by
+ * {@code null}.  Hex and octal literals of more than 1024 significant digits
+ * become {@code 1e999}, JavaScript's Infinity.  Numeric object keys are
+ * converted to a string form textually: an exponent outside the double range
+ * is kept (<code>{1e400:0}</code> becomes <code>{"1e+400":0}</code>, not
+ * {@code "Infinity"}), and one beyond the int range is kept as written
+ * (<code>{1e2147483648:0}</code> becomes <code>{"1e2147483648":0}</code>), so keys
+ * of equal value can differ.  The Reader and InputStream overloads accept at
+ * most {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars unless given a
+ * {@code maximumInputLength}.  The library runs on Java 8 and later.
  *
  * <h2>Security</h2>
  * Since the output is well-formed JSON, passing it to <code>eval</code> will
@@ -99,10 +116,11 @@ import java.nio.charset.Charset;
  * unintended side-effects.
  *
  * <h2>Efficiency</h2>
- * The sanitize method will return the input string without allocating a new
- * buffer when the input is already valid JSON that satisfies the properties
- * above.  Thus, if used on input that is usually well formed, it has minimal
- * memory overhead.
+ * {@code sanitize(String)} returns the input string itself, without allocating
+ * a new buffer, when the input is already valid JSON that satisfies the
+ * properties above.  Thus, if used on input that is usually well formed, it
+ * has minimal memory overhead.  ({@code sanitize(CharSequence)} always copies
+ * its input once.)
  * <p>The sanitize method takes O(n) time where n is the length in UTF-16
  * code-units.
  */
@@ -130,7 +148,7 @@ public final class JsonSanitizer {
    * @param jsonish JSON-like content.
    * @return embeddable JSON
    */
-  public static String sanitize(String jsonish) {
+  public static String sanitize(@Nullable String jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
@@ -142,7 +160,7 @@ public final class JsonSanitizer {
    * @param maximumNestingDepth maximum nesting depth.
    * @return embeddable JSON
    */
-  public static String sanitize(String jsonish, int maximumNestingDepth) {
+  public static String sanitize(@Nullable String jsonish, int maximumNestingDepth) {
     JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
     s.sanitize();
     return s.toString();
@@ -160,7 +178,7 @@ public final class JsonSanitizer {
    * @return embeddable JSON, always as an immutable {@code String}, never
    *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
-  public static String sanitize(CharSequence jsonish) {
+  public static String sanitize(@Nullable CharSequence jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
@@ -174,7 +192,7 @@ public final class JsonSanitizer {
    *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
   public static String sanitize(
-      CharSequence jsonish, int maximumNestingDepth) {
+      @Nullable CharSequence jsonish, int maximumNestingDepth) {
     if (jsonish == null) {
       return sanitize((String) null, maximumNestingDepth);
     }
@@ -383,14 +401,14 @@ public final class JsonSanitizer {
    * {@code isMap[i]} when {@code 0 <= i && i < bracketDepth} is true iff
    * the i-th open bracket was a <code>'{'</code>, not a <code>'['</code>.
    */
-  private boolean[] isMap;
+  private boolean @Nullable [] isMap;
   /**
    * If non-null, then contains the sanitized form of
    * {@code jsonish.substring(0, cleaned)}.
    * If {@code null}, then no unclean constructs have been found in
    * {@code jsonish} yet.
    */
-  private StringBuilder sanitizedJson;
+  private @Nullable StringBuilder sanitizedJson;
   /**
    * The length of the prefix of {@link #jsonish} that has been written onto
    * {@link #sanitizedJson}.
@@ -399,11 +417,11 @@ public final class JsonSanitizer {
 
   private static final boolean SUPER_VERBOSE_AND_SLOW_LOGGING = false;
 
-  JsonSanitizer(String jsonish) {
+  JsonSanitizer(@Nullable String jsonish) {
     this(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
-  JsonSanitizer(String jsonish, int maximumNestingDepth) {
+  JsonSanitizer(@Nullable String jsonish, int maximumNestingDepth) {
     this.maximumNestingDepth = Math.min(Math.max(1, maximumNestingDepth),MAXIMUM_NESTING_DEPTH);
     if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
       System.err.println("\n" + jsonish + "\n========");
