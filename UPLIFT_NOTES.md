@@ -152,3 +152,54 @@ Reviewed `475f264..6c8880b`. **No Blocker, no High.** Scope verdict: in scope, n
 | Nits | Pin the one-char test's literal; a minimized seed; malformed UTF-8 at the byte boundary. | **Fixed**, all three. |
 
 Also fixed without a finding: `.gitattributes` `* text=auto` could have given the pinned digest file CRLF endings on a Windows checkout.
+
+# Phase 3: security and correctness fixes
+
+- **Date:** 2026-10-28
+- **Commits:** `e4999eb`..`c759f35` on top of Phase 2; branch `security-fixes`.
+- **Decisions:** brief §7 Q4a to Q4f, decided by Claude on the owner's explicit delegation (2026-10-28), plus RULE-001 (approved in `RULE_REVIEWS.md`). The owner signs off `analysis/json-sanitizer/APPROVED_DIFFERENCES.md` before a release.
+- **Scope:** `src/main/java/com/google/json/JsonSanitizer.java`, `EvalMinifier.java`, tests, `.github/required-tests.txt`. One baseline test changed on purpose: `JsonSanitizerTest.testSanitizeCharSequence` asserted the identity SEC-002 removes.
+
+## Fixes
+
+| Finding | Change | Test (fails on the build before it) |
+|---|---|---|
+| SEC-001 (High, CWE-407) | The reviewed patch, unchanged: hex/octal literals reencode exactly up to 1024 significant digits, past that become `1e999` | `testSec001...`: boundaries, `0X`, `+`, keys, dropped exponent, 1,000,000 hex digits in under 1 s |
+| SEC-002 (CWE-375) | `sanitize(CharSequence)` always returns a new immutable `String` (and now declares `String`) | `testSec002...`: mutate-after-return |
+| SEC-003 (CWE-770) | Reader/InputStream input limited to `DEFAULT_MAXIMUM_INPUT_LENGTH` = 4 Mi chars (new overloads take `maximumInputLength`); `IOException` past it, nothing written; output appended in chunks | `testSec003...`: exact boundary; endless input and the worst-case expansion at the limit in a child JVM at `-Xmx256m` |
+| SEC-005 (CWE-436) | The over-deep skip scanner splits words as the main loop does (shared helpers) | `testSec005...`: the brief's example, and `[t,7]` at depth 1 is `[null,7]` for every closed test value `t` |
+| SEC-006 (CWE-190) | Numeric key exponents computed in `long` | `testSec006...`: both overflow directions, unchanged neighbours |
+| SEC-004 (CWE-116) | `minify` keeps an exponent's `+` in its number | `testSec004...` |
+| RULE-001 | `\v` is U+000B in the normalizer and the look-ahead decoder | `testRule001...`, and `BehaviorContractTest` updated as planned |
+
+## Proof
+
+**Dual run on every leg:** `GoldenCorpusTest` runs the legacy release (kept verbatim in `com.google.json.legacy`, proven to reproduce the pinned digests) and the new code over the 567,123-input corpus, seven calls each. 70,352 (input, call) pairs differ, 1.77% of calls; every one is explained by an approved class, with exact per-class counts (`APPROVED_DIFFERENCES.md`).
+
+| Leg | Tests | Required | Corpus |
+|---|---|---|---|
+| Zulu 8.0.512, Homebrew 11, 17, 21, 25 (local, before the review fixes) | 58, 0 failures | 50 of 50 | 0 unexplained |
+| Temurin 8, 11, 17, 21, 25 (CI run 40608678496, before the review fixes) | 58, 0 failures | 50 of 50 | 0 unexplained |
+| Zulu 8 and Homebrew 21 (local, after the review fixes) | 61, 0 failures | 53 of 53 | 0 unexplained |
+
+**Fuzzing:** 978,666 inputs locally and 1,054,828 in CI, 5 minutes each, no finding. The reviewer's own property fuzzer ran about 3.1 million inputs with 0 failures, and evaluated 20,000 pooled `minify` outputs in node: 0 failures, against 1,130 on legacy.
+
+## Security-auditor review (independent, 2026-10-28)
+
+Verdict: no Critical or High; none of the seven fixes opens an embed-safety bypass, breaks validity or idempotence, or reintroduces super-linear time; the reviewer rebuilt the fixes as minimal hunks on the legacy code and reproduced all 70,352 outputs.
+
+| # | Finding | Disposition |
+|---|---|---|
+| M-1 | The 16 Mi default still let one request take 0.5 to 0.75 GB (six-fold output, then a whole-output copy). | **Fixed** (`c759f35`): 4 Mi default, buffer released, chunked append. Measured worst case at the limit: 128 MB heap (JDK 21), 192 MB (JDK 8); tested at 256 MB. The Q4c note in the brief records the change from 16 Mi. |
+| L-1 | The SEC-004 output check could approve an unsafe pool or loop on malformed output. | **Fixed**, and pinned by `ApprovedDifferencesTest`. |
+| L-2 | The SEC-006 check could take the sign from the wrong `e`. | **Fixed**, pinned. |
+| I-1 | The `\v` output check did not require a real escape. | **Fixed**, pinned. |
+| I-2 | The SEC-004 check compares with the new `sanitize`. | **Kept**: the sanitize calls are themselves checked against legacy. |
+| I-3 | API notes: constant inlining, adjacent `int` parameters, up to 8 KiB over-read, `String` return type. | `String` return type and the over-read are **fixed/documented**; the parameter order is kept (a swap fails closed). |
+| I-4 | `{1e2147483648:0}` keeps its raw text while `{10e2147483647:0}` canonicalizes: equal-meaning keys can still differ. | **Recorded** (unchanged legacy behavior; documented in Phase 4). |
+
+## Residuals
+
+- The owner has not yet signed off `APPROVED_DIFFERENCES.md`; the decisions were delegated.
+- Q4c changed from the brief's first proposal (64 Mi) to 16 Mi and, after review, to 4 Mi; callers with larger bodies use the `maximumInputLength` overloads.
+- `GoldenCorpusTest` now costs 44 to 50 s per leg (both implementations).
