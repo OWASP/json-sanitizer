@@ -792,7 +792,8 @@ public final class JsonSanitizer {
               ++i;
               break;
             case 'v':  // Recognized by JS but not by JSON.
-              replace(i, i + 2, "\\u0008");
+              // U+000B, vertical tab, as in JavaScript (legacy wrote U+0008).
+              replace(i, i + 2, "\\u000b");
               ++i;
               break;
             case 'x':
@@ -1627,7 +1628,7 @@ public final class JsonSanitizer {
         case 'n': return 0x2000A;
         case 'r': return 0x2000D;
         case 't': return 0x20009;
-        case 'v': return 0x20008;
+        case 'v': return 0x2000B;
         default: break;
       }
       return (0x20000) | nc;

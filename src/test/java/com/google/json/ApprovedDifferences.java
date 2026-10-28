@@ -39,8 +39,14 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
   static final Map<String, Integer> EXPECTED_COUNTS;
   static {
     Map<String, Integer> m = new LinkedHashMap<String, Integer>();
+    // A difference is counted once, under the first check that explains it, in
+    // this order: single rewrites, combined rewrites, then the output checks.
     m.put("SEC-001 over-long hex/octal literal is 1e999", 35280);
-    m.put("SEC-005 over-deep value skipped as the main loop tokenizes it", 12834);
+    m.put("SEC-005 over-deep value skipped as the main loop tokenizes it", 12106);
+    m.put("RULE-001 \\v escape is U+000B", 21296);
+    m.put("combined: SEC-005 + RULE-001", 722);
+    m.put("RULE-001 \\v escape is U+000B (checked on the output)", 623);
+    m.put("combined: SEC-005 + RULE-001 (checked on the output)", 6);
     m.put("SEC-006 numeric key exponent no longer wraps at the int limit", 14);
     m.put("SEC-004 minify keeps an exponent's + sign in its number", 305);
     EXPECTED_COUNTS = Collections.unmodifiableMap(m);
@@ -74,6 +80,10 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
       public String id() { return "SEC-005 over-deep value skipped as the main loop tokenizes it"; }
       public String rewrite(String input, int depth) { return overDeepValuesAsEmptyArrays(input, depth); }
     });
+    rewrites.add(new Rewrite() {
+      public String id() { return "RULE-001 \\v escape is U+000B"; }
+      public String rewrite(String input, int depth) { return verticalTabEscapesAsUnicode(input); }
+    });
   }
 
   private String cachedInput;
@@ -94,6 +104,36 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
       }
       if (legs.length != 0 && legs[leg].equals(current)) {
         return r.id();
+      }
+    }
+    // An input several fixes touch: all of their rewrites at once.
+    String combinedKey = "combined@" + LEG_DEPTHS[leg];
+    String[] combined = cachedLegs.get(combinedKey);
+    if (combined == null) {
+      String rewritten = input;
+      StringBuilder ids = new StringBuilder();
+      for (Rewrite r : rewrites) {
+        String next = r.rewrite(rewritten, LEG_DEPTHS[leg]);
+        if (!next.equals(rewritten)) {
+          ids.append(ids.length() == 0 ? "" : " + ").append(r.id().substring(0, r.id().indexOf(' ')));
+          rewritten = next;
+        }
+      }
+      combined = ids.indexOf(" + ") < 0 ? new String[0] : GoldenCorpus.LEGACY.legs(rewritten);
+      cachedLegs.put(combinedKey, combined);
+      cachedLegs.put(combinedKey + "#ids", new String[] { ids.toString() });
+    }
+    if (combined.length != 0 && combined[leg].equals(current)) {
+      return "combined: " + cachedLegs.get(combinedKey + "#ids")[0];
+    }
+    if (verticalTabEscapesNowU000b(input, legacy, current)) {
+      return "RULE-001 \\v escape is U+000B (checked on the output)";
+    }
+    // \v checked on the output, on top of another fix's replayed rewrite.
+    for (Rewrite r : rewrites) {
+      String[] legs = cachedLegs.get(r.id() + "@" + LEG_DEPTHS[leg]);
+      if (legs != null && legs.length != 0 && verticalTabEscapesNowU000b(input, legs[leg], current)) {
+        return "combined: " + r.id().substring(0, r.id().indexOf(' ')) + " + RULE-001 (checked on the output)";
       }
     }
     if (exponentNoLongerWraps(input, legacy, current)) {
@@ -459,5 +499,54 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
       return n;
     }
     return start + 1;
+  }
+
+  // ---- RULE-001 \v -------------------------------------------------------------------------
+
+  /**
+   * RULE-001: JavaScript's \v is U+000B; legacy wrote U+0008. In legacy terms:
+   * every \v escape (a backslash that is not itself escaped, then v) is
+   * written \u000b, which the legacy normalizer keeps as it is.
+   */
+  static String verticalTabEscapesAsUnicode(String s) {
+    StringBuilder sb = null;
+    int copied = 0;
+    for (int i = 0; i < s.length(); ++i) {
+      if (s.charAt(i) != '\\') { continue; }
+      if (i + 1 < s.length() && s.charAt(i + 1) == 'v') {
+        if (sb == null) { sb = new StringBuilder(s.length() + 16); }
+        sb.append(s, copied, i).append("\\u000b");
+        copied = i + 2;
+      }
+      ++i;  // Skip the escaped character, so the second \ of \\ never starts an escape.
+    }
+    return sb == null ? s : sb.append(s, copied, s.length()).toString();
+  }
+
+  /**
+   * RULE-001 where the rewrite cannot be replayed: a backslash is an escape
+   * only in some positions (at the start of an unquoted token the main loop
+   * drops it; at the end of one legacy drops the backslash of a \\u000b), so
+   * the \\u000b rewrite does not reproduce every case. Checked on the output
+   * instead: same length, every difference is the last character of a
+   * \\u0008 that is now \\u000b, and there are no more of them than \\v
+   * escapes in the input. (SecurityFixesTest also pins that \\b is unchanged.)
+   */
+  static boolean verticalTabEscapesNowU000b(String input, String legacy, String current) {
+    if (legacy.length() != current.length()) { return false; }
+    int swaps = 0;
+    for (int i = 0; i < legacy.length(); ++i) {
+      char l = legacy.charAt(i), c = current.charAt(i);
+      if (l == c) { continue; }
+      if (l != '8' || c != 'b' || i < 5 || !legacy.startsWith("\\u000", i - 5)) { return false; }
+      ++swaps;
+    }
+    int escapes = 0;
+    for (int i = 0; i + 1 < input.length(); ++i) {
+      if (input.charAt(i) != '\\') { continue; }
+      if (input.charAt(i + 1) == 'v') { ++escapes; }
+      ++i;
+    }
+    return swaps > 0 && swaps <= escapes;
   }
 }

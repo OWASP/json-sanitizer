@@ -223,6 +223,28 @@ public final class SecurityFixesTest {
         EvalMinifier.minify(input.toString().replace('+', '-')));
   }
 
+  /**
+   * RULE-001 correctness fix: \v is U+000B (vertical tab) in JavaScript, but
+   * the normalizer wrote U+0008 (backspace) and the embed-safety look-ahead
+   * decoded it as U+0008 too (approved in RULE_REVIEWS.md).
+   */
+  @Test
+  public final void testRule001VerticalTabEscape() throws Exception {
+    assertSanitized("[\"a\\u000bb\"]", "[\"a\\vb\"]");
+    assertSanitized("[\"a\\u000bb\"]", "['a\\vb']");
+    // An escaped backslash before v is not a \v escape.
+    assertSanitized("[\"a\\\\vb\"]", "[\"a\\\\vb\"]");
+    // Backspace is still backspace, in every spelling.
+    assertSanitized("[\"a\\bb\"]", "[\"a\\bb\"]");
+    assertSanitized("[\"a\\u0008b\"]", "[\"a\\u0008b\"]");
+    assertSanitized("[\"a\\u0008b\"]", "[\"a\\x08b\"]");
+    // The look-ahead decoder: a simple escape, two raw chars, decoding to U+000B.
+    java.lang.reflect.Method unescapedChar =
+        JsonSanitizer.class.getDeclaredMethod("unescapedChar", String.class, int.class);
+    unescapedChar.setAccessible(true);
+    assertEquals(0x2000B, unescapedChar.invoke(null, "\\v", 0));
+  }
+
   /** Feeds an endless input to the default stream overloads; run by testSec003 in a 256 MB JVM. */
   static final class EndlessInput {
     public static void main(String[] args) {
