@@ -6,12 +6,13 @@ Releases go to Maven Central through the [Central Portal](https://central.sonaty
 
 The manual gate is only as strong as these settings. Without them, anyone with write access could reach the signing key and the publishing token.
 
-1. **Namespace.** The groupId is `com.mikesamuel`. Whoever controls that namespace on the Central Portal must verify it there, or add the OWASP maintainers. If it cannot be shared, the groupId must move, which is a breaking coordinate change for consumers.
-2. **Environment `release`** (Settings, Environments):
-   - Required reviewers: the maintainers allowed to release, with **Prevent self-review** on, so the person who pushes a tag cannot approve it.
+1. **Namespace.** The groupId is `com.mikesamuel`, held on the Central Portal by Mike Samuel, the original author. The new maintainer creates a Central Portal account; Mike, as a known publisher of the namespace, asks [Central Support](https://central.sonatype.org/faq/what-happened-to-issues-sonatype-org) to add that username as a publisher for `com.mikesamuel`. Keeping the groupId means consumers' existing coordinates and update tools keep working; moving to another groupId (for example under `org.owasp`) is a breaking coordinate change.
+2. **Signing key.** The releasing maintainer's own GPG key; it need not be the key earlier releases were signed with. Publish its public half to a key server (for example `keys.openpgp.org`) before the first release.
+3. **Environment `release`** (Settings, Environments):
+   - Required reviewers: the maintainers allowed to release. With two or more, turn on **Prevent self-review**, so the person who pushes a tag cannot approve it. A sole maintainer leaves it off (it would block every release); the approval still stops an accidental tag, and the settings below still keep the key away from every other workflow.
    - Deployment branches and tags: **selected tags only**, pattern `v*`.
-   - **Environment secrets** (not repository secrets, which every workflow on every branch can read): `CENTRAL_TOKEN_USERNAME` and `CENTRAL_TOKEN_PASSWORD` (a Central Portal user token), `GPG_PRIVATE_KEY` (ASCII-armored) and `GPG_PASSPHRASE`. Publish the key's public half to a key server.
-3. **Tag ruleset** (Settings, Rules): only release maintainers may create, update or delete tags matching `v*`.
+   - **Environment secrets** (not repository secrets, which every workflow on every branch can read): `CENTRAL_TOKEN_USERNAME` and `CENTRAL_TOKEN_PASSWORD` (a Central Portal user token), `GPG_PRIVATE_KEY` (ASCII-armored) and `GPG_PASSPHRASE`, for example `gh secret set GPG_PRIVATE_KEY --env release < private.asc`.
+4. **Tag ruleset** (Settings, Rules): only release maintainers may create, update or delete tags matching `v*`.
 
 ## Each release
 
