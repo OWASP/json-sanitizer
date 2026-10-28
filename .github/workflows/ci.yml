@@ -1,7 +1,11 @@
 name: CI
 
+# Pushes to master and pull requests. (Not every branch push: a branch with an open pull
+# request would otherwise run everything twice.)
 on:
   push:
+    branches:
+      - master
   pull_request:
 
 permissions:
@@ -89,9 +93,13 @@ jobs:
           if-no-files-found: ignore
 
   fuzz:
-    name: Fuzz with Jazzer for 5 minutes
+    name: Fuzz with Jazzer
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # 2 minutes on a pull request for quick feedback, 5 on master. OSS-Fuzz fuzzes master
+      # continuously as well (google/oss-fuzz projects/json-sanitizer).
+      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && '120' || '300' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -102,20 +110,20 @@ jobs:
           java-version: 21
           cache: maven
 
-      # JAZZER_FUZZ=1 turns the @FuzzTest from seed replay into fuzzing, for its maxDuration (5m).
-      # Any exception or failed assertion is a finding and fails the job.
+      # JAZZER_FUZZ=1 turns the @FuzzTest from seed replay into fuzzing; JAZZER_MAX_DURATION
+      # overrides its maxDuration. Any exception or failed assertion is a finding and fails the job.
       - name: Fuzz JsonSanitizer and EvalMinifier
         env:
           JAZZER_FUZZ: 1
-        run: mvn -B -ntp test -Dtest='JsonSanitizerFuzzTest#sanitizeProperties' -Djacoco.skip=true 2>&1 | tee fuzz.log
+        run: JAZZER_MAX_DURATION="${FUZZ_SECONDS}s" mvn -B -ntp test -Dtest='JsonSanitizerFuzzTest#sanitizeProperties' -Djacoco.skip=true 2>&1 | tee fuzz.log
 
       # A green run proves nothing unless it fuzzed: Jazzer's summary line must show the full budget.
-      - name: Check the fuzzer ran for its full 5 minutes
+      - name: Check the fuzzer ran for its full time
         run: |
           line=$(grep -E '^Done [0-9]+ runs in [0-9]+ second' fuzz.log | tail -1)
-          echo "${line:-no Jazzer summary line}"
+          echo "${line:-no Jazzer summary line} (budget ${FUZZ_SECONDS} s)"
           secs=$(echo "$line" | sed -n 's/^Done [0-9]* runs in \([0-9]*\) second.*/\1/p')
-          [ "${secs:-0}" -ge 280 ]
+          [ "${secs:-0}" -ge $(( FUZZ_SECONDS - 20 )) ]
 
       # A finding is saved as a crash-* file next to the seed inputs; adding it there makes every
       # later test run replay it. Also kept when the job times out.
@@ -132,3 +140,37 @@ jobs:
             target/surefire-reports/
           include-hidden-files: true
           if-no-files-found: ignore
+
+  # OSS-Fuzz builds master with `mvn package` on Ubuntu 20.04's Maven 3.6.3 and JDK 17
+  # (google/oss-fuzz projects/json-sanitizer/build.sh). This job builds the same way, so a change
+  # that would break continuous fuzzing fails here first.
+  oss-fuzz-build:
+    name: Build as OSS-Fuzz does (Maven 3.6.3, JDK 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MAVEN_VERSION: 3.6.3
+      MAVEN_SHA512: c35a1803a6e70a126e80b2b3ae33eed961f83ed74d18fcd16909b2d44d7dada3203f1ffe726c17ef8dcca2dcaa9fca676987befeadc9b9f759967a8cb77181c0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Install Maven 3.6.3 (checksum verified)
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/maven.tgz" "https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz"
+          echo "$MAVEN_SHA512  $RUNNER_TEMP/maven.tgz" | sha512sum -c -
+          tar xzf "$RUNNER_TEMP/maven.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/apache-maven-$MAVEN_VERSION/bin" >> "$GITHUB_PATH"
+
+      - name: Build as build.sh does
+        run: |
+          mvn -v
+          version=$(mvn -B org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate -Dexpression=project.version -q -DforceStdout)
+          mvn -B package -Dfuzz.seed=6a736f6e2d73616e
+          ls -l "target/json-sanitizer-$version.jar"

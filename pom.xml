@@ -110,7 +110,8 @@ encoding and make it easier to embed your JSON in HTML and XML.
     </pluginManagement>
 
     <plugins>
-      <!-- The build runs on JDK 21 or newer and emits Java 8 bytecode (maven.compiler.release).
+      <!-- The build runs on JDK 17 or newer (CI uses 21; OSS-Fuzz uses 17 with Maven 3.6.3) and
+           emits Java 8 bytecode (maven.compiler.release).
            Tests can run on any JDK from 8 up by pointing surefire at another java binary:
            mvn verify -Djvm=/path/to/jdk8/bin/java -->
       <plugin>
@@ -126,12 +127,12 @@ encoding and make it easier to embed your JSON in HTML and XML.
             <configuration>
               <rules>
                 <requireMavenVersion>
-                  <version>[3.9.0,4)</version>
-                  <message>Build with Maven 3.9.x or 3.10.x; the pinned plugins are verified there, not on Maven 4.</message>
+                  <version>[3.6.3,4)</version>
+                  <message>Build with Maven 3.6.3 to 3.10.x (OSS-Fuzz builds with 3.6.3); the pinned plugins are verified there, not on Maven 4.</message>
                 </requireMavenVersion>
                 <requireJavaVersion>
-                  <version>[21,)</version>
-                  <message>Build with JDK 21 or newer (any JDK that still accepts --release 8). Tests can run on JDK 8+ via -Djvm=/path/to/java.</message>
+                  <version>[17,)</version>
+                  <message>Build with JDK 17 or newer (OSS-Fuzz builds with 17; CI builds with 21). Tests can run on JDK 8+ via -Djvm=/path/to/java.</message>
                 </requireJavaVersion>
               </rules>
             </configuration>

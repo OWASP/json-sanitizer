@@ -257,3 +257,17 @@ No Blocker. Confirmed: guarantees 1, 2, 3, 6 under 1.2 million fuzzed outputs (J
 - javadoc warns `unknown enum constant ElementType.MODULE`: JSpecify's `@NullMarked` can target modules, which `--release 8` does not know. Harmless; consumers compiling with JSpecify on Java 8 may see it too.
 - gpg 3.2.8 signing and the Central Portal upload have never run.
 - Phase 5 (internal cleanup) is not started: its entry criterion is a published 1.3.0.
+
+# Follow-up: OSS-Fuzz build and CI cost (2026-10-28)
+
+**Regression found and fixed.** OSS-Fuzz (google/oss-fuzz `projects/json-sanitizer`) builds master daily with `mvn package` on Ubuntu 20.04's Maven 3.6.3 and JDK 17. Phase 1's enforcer required Maven 3.9+ and JDK 21+, so OSS-Fuzz's first build after PR #40 merged (2026-10-28 06:42 UTC) failed at `validate` on both rules; the five daily builds before it had passed. Continuous fuzzing of this project was down from then until this fix.
+
+- The enforcer now requires Maven `[3.6.3,4)` and JDK `[17,)`. CI still builds on 21.
+- Proof: OSS-Fuzz's `build.sh` steps run locally on Maven 3.6.3 (checksum-verified) and Homebrew JDK 17: `help:evaluate`, then `mvn package` with 61 tests passing and the golden corpus at 0 unexplained, then `dependency:copy` of gson 2.8.6. OSS-Fuzz's three fuzzers (`DenylistFuzzer`, `IdempotenceFuzzer`, `ValidJsonFuzzer`) compile against the new jar.
+- Guard: CI job `oss-fuzz-build` builds the same way on every pull request and master push.
+- Phase 1's "JDK 21+ to build" (residuals above) is superseded: JDK 17 or newer builds.
+
+**CI cost (brief Q11).** The repository is public, so GitHub-hosted runner minutes are free. The real costs were duplicated work and wait time:
+
+- CI now runs on pushes to master and on pull requests only; before, a branch with an open pull request ran everything twice (push and pull_request events).
+- The fuzz job runs 2 minutes on a pull request and 5 on master (`JAZZER_MAX_DURATION`, checked by the job), since OSS-Fuzz fuzzes master continuously as well.
