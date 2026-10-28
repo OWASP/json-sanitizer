@@ -42,6 +42,7 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
     m.put("SEC-001 over-long hex/octal literal is 1e999", 35280);
     m.put("SEC-005 over-deep value skipped as the main loop tokenizes it", 12834);
     m.put("SEC-006 numeric key exponent no longer wraps at the int limit", 14);
+    m.put("SEC-004 minify keeps an exponent's + sign in its number", 305);
     EXPECTED_COUNTS = Collections.unmodifiableMap(m);
   }
 
@@ -98,7 +99,141 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
     if (exponentNoLongerWraps(input, legacy, current)) {
       return "SEC-006 numeric key exponent no longer wraps at the int limit";
     }
+    if (leg == MINIFY_LEG && minifierKeepsExponentSigns(input, legacy, current)) {
+      return "SEC-004 minify keeps an exponent's + sign in its number";
+    }
     return null;
+  }
+
+  // ---- SEC-004 ------------------------------------------------------------------------------
+
+  /** GoldenCorpus's EvalMinifier.minify(String) call. */
+  private static final int MINIFY_LEG = 4;
+
+  /**
+   * SEC-004: the legacy minifier split 12345e+1 at the '+' and pooled
+   * "12345e", which is not valid JavaScript. Legacy cannot be asked to pool
+   * the whole number, so this class is checked on meaning: the legacy output
+   * pooled a value ending in e or E (the bug's signature), and the new output,
+   * with every pooled value substituted back for its parameter, is exactly the
+   * sanitized JSON less the whitespace outside strings that pooling drops
+   * (RULE-002).
+   */
+  static boolean minifierKeepsExponentSigns(String input, String legacy, String current) {
+    List<String> legacyValues = pooledValues(legacy);
+    boolean signature = false;
+    for (String v : legacyValues) {
+      char last = v.charAt(v.length() - 1);
+      if ((last | 32) == 'e' && v.charAt(0) != '"') { signature = true; }
+    }
+    if (!signature) { return false; }
+    String expanded = expand(current);
+    return expanded != null && expanded.equals(withoutWhitespaceOutsideStrings(JsonSanitizer.sanitize(input)));
+  }
+
+  private static String withoutWhitespaceOutsideStrings(String json) {
+    StringBuilder sb = new StringBuilder(json.length());
+    for (int i = 0; i < json.length();) {
+      char c = json.charAt(i);
+      if (c == '"') {
+        int end = endOfJsonString(json, i);
+        sb.append(json, i, end);
+        i = end;
+      } else {
+        if (!(c == ' ' || c == '\t' || c == '\n' || c == '\r')) { sb.append(c); }
+        ++i;
+      }
+    }
+    return sb.toString();
+  }
+
+  private static final String HEAD = "(function(", RETURN = "){return", TAIL = "))";
+
+  /** The values a minified (function(a,b){return BODY}(V1,V2)) passes, or none. */
+  private static List<String> pooledValues(String minified) {
+    List<String> values = new ArrayList<String>();
+    int bodyStart = minified.indexOf(RETURN);
+    if (!minified.startsWith(HEAD) || bodyStart < 0 || !minified.endsWith(TAIL)) { return values; }
+    int bodyEnd = endOfJsonValue(minified, bodyStart + RETURN.length());
+    if (bodyEnd < 0 || !minified.startsWith("}(", bodyEnd)) { return values; }
+    int i = bodyEnd + 2;
+    int end = minified.length() - TAIL.length();
+    while (i < end) {
+      int valueEnd = endOfJsonValue(minified, i);
+      if (valueEnd < 0) { return new ArrayList<String>(); }
+      values.add(minified.substring(i, valueEnd));
+      i = valueEnd;
+      if (i < end && minified.charAt(i) == ',') { ++i; }
+    }
+    return values;
+  }
+
+  /** A minified output with each parameter replaced by its value; the input if it is not pooled; null if malformed. */
+  private static String expand(String minified) {
+    if (!minified.startsWith(HEAD)) { return minified; }
+    int bodyStart = minified.indexOf(RETURN);
+    if (bodyStart < 0) { return null; }
+    String[] params = minified.substring(HEAD.length(), bodyStart).split(",");
+    List<String> values = pooledValues(minified);
+    if (values.size() != params.length) { return null; }
+    Map<String, String> byName = new HashMap<String, String>();
+    for (int i = 0; i < params.length; ++i) { byName.put(params[i], values.get(i)); }
+    int bodyEnd = endOfJsonValue(minified, bodyStart + RETURN.length());
+    StringBuilder sb = new StringBuilder();
+    for (int i = bodyStart + RETURN.length(); i < bodyEnd;) {
+      char c = minified.charAt(i);
+      if (c == '"') {
+        int end = endOfJsonString(minified, i);
+        sb.append(minified, i, end);
+        i = end;
+      } else if (Character.isJavaIdentifierStart(c) && !(c >= '0' && c <= '9')) {
+        int end = i + 1;
+        while (end < bodyEnd && Character.isJavaIdentifierPart(minified.charAt(end))) { ++end; }
+        String name = minified.substring(i, end);
+        String value = byName.get(name);
+        sb.append(value != null ? value : name);
+        i = end;
+      } else if ((c >= '0' && c <= '9') || c == '-') {
+        // A number: copy it whole, so its e is not read as an identifier.
+        int end = i + 1;
+        while (end < bodyEnd && "0123456789.eE+-".indexOf(minified.charAt(end)) >= 0) { ++end; }
+        sb.append(minified, i, end);
+        i = end;
+      } else {
+        sb.append(c);
+        ++i;
+      }
+    }
+    return sb.toString();
+  }
+
+  /** The end of the JSON value at i in sanitized output (string, number, keyword, array or object), or -1. */
+  private static int endOfJsonValue(String s, int i) {
+    if (i >= s.length()) { return -1; }
+    char c = s.charAt(i);
+    if (c == '"') { return endOfJsonString(s, i); }
+    if (c == '[' || c == '{') {
+      int depth = 0;
+      for (int j = i; j < s.length(); ++j) {
+        char d = s.charAt(j);
+        if (d == '"') { j = endOfJsonString(s, j) - 1; }
+        else if (d == '[' || d == '{') { ++depth; }
+        else if ((d == ']' || d == '}') && --depth == 0) { return j + 1; }
+      }
+      return -1;
+    }
+    int j = i;
+    while (j < s.length() && ",]})".indexOf(s.charAt(j)) < 0) { ++j; }
+    return j;
+  }
+
+  private static int endOfJsonString(String s, int start) {
+    for (int j = start + 1; j < s.length(); ++j) {
+      char c = s.charAt(j);
+      if (c == '\\') { ++j; }
+      else if (c == '"') { return j + 1; }
+    }
+    return s.length();
   }
 
   // ---- SEC-006 ------------------------------------------------------------------------------

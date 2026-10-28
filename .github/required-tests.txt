@@ -49,3 +49,4 @@ com.google.json.SecurityFixesTest#testSec002CharSequenceResultCannotChangeLater
 com.google.json.SecurityFixesTest#testSec003StreamInputIsLimited
 com.google.json.SecurityFixesTest#testSec005OverDeepValueKeepsItsSiblings
 com.google.json.SecurityFixesTest#testSec006NumericKeyExponentDoesNotOverflow
+com.google.json.SecurityFixesTest#testSec004MinifierKeepsExponentSigns

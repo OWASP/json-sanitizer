@@ -202,6 +202,27 @@ public final class SecurityFixesTest {
     assertSanitized("[11e2147483647]", "[11e2147483647]");
   }
 
+  /**
+   * SEC-004 (CWE-116): EvalMinifier split 12345e+1 at the '+' and pooled
+   * "12345e", so the output was not valid JavaScript (Q4f).
+   */
+  @Test
+  public final void testSec004MinifierKeepsExponentSigns() {
+    StringBuilder input = new StringBuilder("[");
+    StringBuilder body = new StringBuilder();
+    for (int i = 0; i < 12; ++i) {
+      input.append(i == 0 ? "" : ",").append("12345e+1");
+      body.append(i == 0 ? "" : ",").append('a');
+    }
+    input.append(']');
+    assertEquals("(function(a){return[" + body + "]}(12345e+1))", EvalMinifier.minify(input.toString()));
+    assertEquals("(function(a){return[" + body + "]}(12345E+1))",
+        EvalMinifier.minify(input.toString().replace('e', 'E')));
+    // A '-' exponent already stayed in one token.
+    assertEquals("(function(a){return[" + body + "]}(12345e-1))",
+        EvalMinifier.minify(input.toString().replace('+', '-')));
+  }
+
   /** Feeds an endless input to the default stream overloads; run by testSec003 in a 256 MB JVM. */
   static final class EndlessInput {
     public static void main(String[] args) {
