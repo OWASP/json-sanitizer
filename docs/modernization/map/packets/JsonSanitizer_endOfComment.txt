@@ -1,0 +1,51 @@
+NODE: JsonSanitizer.endOfComment
+ID: JsonSanitizer#endOfComment
+KIND: module
+DOMAIN: D4 Comment & junk removal
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:883-913
+LINES: 31
+
+CONNECTIONS (from the dependency map):
+- read -> jsonish (input text) (ds:jsonish)
+- call <- JsonSanitizer.endOfBracketedValue (JsonSanitizer#endOfBracketedValue)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+  878    /**
+  879     * The position past the end of the JS comment starting at
+  880     * {@code jsonish.charAt(start)}, or {@code start + 1} if the {@code '/'}
+  881     * there does not start a comment.
+  882     */
+
+SOURCE :
+  883    private int endOfComment(int start) {
+  884      int n = jsonish.length();
+  885      int end = start + 1;
+  886      if (start + 1 < n) {
+  887        switch (jsonish.charAt(start + 1)) {
+  888          case '/':
+  889            end = n;  // Worst case.
+  890            for (int j = start + 2; j < n; ++j) {
+  891              char cch = jsonish.charAt(j);
+  892              if (cch == '\n' || cch == '\r'
+  893                  || cch == '\u2028' || cch == '\u2029') {
+  894                end = j + 1;
+  895                break;
+  896              }
+  897            }
+  898            break;
+  899          case '*':
+  900            end = n;
+  901            if (start + 3 < n) {
+  902              for (int j = start + 2;
+  903                   (j = jsonish.indexOf('/', j + 1)) >= 0;) {
+  904                if (jsonish.charAt(j - 1) == '*') {
+  905                  end = j + 1;
+  906                  break;
+  907                }
+  908              }
+  909            }
+  910            break;
+  911        }
+  912      }
+  913      return end;

@@ -1,0 +1,22 @@
+NODE: JsonSanitizer.appendHex
+ID: JsonSanitizer#appendHex
+KIND: module
+DOMAIN: D5 String normalization
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1382-1387
+LINES: 6
+
+CONNECTIONS (from the dependency map):
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- write -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+ 1382    private void appendHex(int n, int nDigits) {
+ 1383      for (int quadsToShift = nDigits; --quadsToShift >= 0;) {
+ 1384        int dig = (n >>> (4 * quadsToShift)) & 0xf;
+ 1385        sanitizedJson.append((char) (dig + (dig < 10 ? '0' : (char) ('a' - 10))));
+ 1386      }
+ 1387    }

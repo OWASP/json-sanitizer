@@ -1,0 +1,32 @@
+{
+ "EvalMinifier#static-init": [
+  "src/main/java/com/google/json/EvalMinifier.java",
+  [
+   [
+    229,
+    231
+   ],
+   [
+    291,
+    303
+   ]
+  ]
+ ],
+ "JsonSanitizer#static-init": [
+  "src/main/java/com/google/json/JsonSanitizer.java",
+  [
+   [
+    251,
+    251
+   ],
+   [
+    1408,
+    1412
+   ],
+   [
+    1423,
+    1432
+   ]
+  ]
+ ]
+}

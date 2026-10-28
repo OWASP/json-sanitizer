@@ -1,0 +1,52 @@
+NODE: JsonSanitizer.sanitize(CharSequence)
+ID: JsonSanitizer#sanitize(CharSequence)
+KIND: module
+DOMAIN: D1 Public API
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:154-175
+LINES: 22
+FLAGS: entry point (public API or deployment/build config)
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.JsonSanitizer() (JsonSanitizer#JsonSanitizer())
+- call -> JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+- call -> JsonSanitizer.sanitize(String) (JsonSanitizer#sanitize(String))
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- JsonSanitizerTest (JsonSanitizerTest)
+
+HEADER COMMENT:
+  142    /**
+  143     * Same as {@link JsonSanitizer#sanitize(String)}, but accepts any
+  144     * {@link CharSequence}, such as a {@link StringBuilder} or the characters of
+  145     * a string value from another JSON library.
+  146     * <p>
+  147     * The content is copied once into a {@code String} before sanitizing, so
+  148     * later changes to {@code jsonish} do not affect the result.
+  149     *
+  150     * @param jsonish JSON-like content.
+  151     * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
+  152     *     it is returned unchanged.
+  153     */
+
+SOURCE :
+  154    public static CharSequence sanitize(CharSequence jsonish) {
+  155      return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
+  156    }
+  157  
+  158    /**
+  159     * Same as {@link JsonSanitizer#sanitize(CharSequence)}, but allows to set a
+  160     * custom maximum nesting depth.
+  161     *
+  162     * @param jsonish JSON-like content.
+  163     * @param maximumNestingDepth maximum nesting depth.
+  164     * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
+  165     *     it is returned unchanged.
+  166     */
+  167    public static CharSequence sanitize(
+  168        CharSequence jsonish, int maximumNestingDepth) {
+  169      if (jsonish == null) {
+  170        return sanitize((String) null, maximumNestingDepth);
+  171      }
+  172      JsonSanitizer s = new JsonSanitizer(
+  173          jsonish.toString(), maximumNestingDepth);
+  174      s.sanitize();
+  175      return s.sanitizedJson != null ? s.sanitizedJson : jsonish;

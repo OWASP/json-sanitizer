@@ -1,0 +1,26 @@
+NODE: JsonSanitizer.isJsonSpecialChar
+ID: JsonSanitizer#isJsonSpecialChar
+KIND: module
+DOMAIN: D2 Tokenizer / state machine
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1368-1378
+LINES: 11
+
+CONNECTIONS (from the dependency map):
+- read -> jsonish (input text) (ds:jsonish)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+ 1368    private boolean isJsonSpecialChar(int i) {
+ 1369      char ch = jsonish.charAt(i);
+ 1370      if (ch <= ' ') { return true; }
+ 1371      switch (ch) {
+ 1372        case '"':
+ 1373        case ',': case ':':
+ 1374        case '[': case ']':
+ 1375        case '{': case '}':
+ 1376          return true;
+ 1377        default:
+ 1378          return false;

@@ -1,0 +1,20 @@
+NODE: JsonSanitizer.runSlashPreceding
+ID: JsonSanitizer#runSlashPreceding
+KIND: module
+DOMAIN: D6 Embedding-safety escapes
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1534-1539
+LINES: 6
+
+CONNECTIONS (from the dependency map):
+- call <- JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+ 1534    private static int runSlashPreceding(String jsonish, int pos) {
+ 1535      int startOfRun = pos;
+ 1536      while (startOfRun >= 0 && jsonish.charAt(startOfRun) == '\\') {
+ 1537        --startOfRun;
+ 1538      }
+ 1539      return pos - startOfRun;

@@ -1,0 +1,43 @@
+NODE: JsonSanitizer.endOfBracketedValue
+ID: JsonSanitizer#endOfBracketedValue
+KIND: module
+DOMAIN: D3 Structure repair + depth limit
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:922-942
+LINES: 21
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.endOfComment (JsonSanitizer#endOfComment)
+- call -> JsonSanitizer.endOfQuotedString (JsonSanitizer#endOfQuotedString)
+- read -> jsonish (input text) (ds:jsonish)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+  916    /**
+  917     * The position past the close bracket that matches the open bracket at
+  918     * {@code jsonish.charAt(start)}, or the end of input if it is never closed.
+  919     * Brackets inside strings and comments are ignored, and any close bracket
+  920     * matches any open bracket, as in {@link #sanitize()}.
+  921     */
+
+SOURCE :
+  922    private int endOfBracketedValue(int start) {
+  923      int n = jsonish.length();
+  924      int depth = 0;
+  925      for (int i = start; i < n; ++i) {
+  926        switch (jsonish.charAt(i)) {
+  927          case '"': case '\'':
+  928            i = endOfQuotedString(jsonish, i) - 1;
+  929            break;
+  930          case '/':
+  931            i = endOfComment(i) - 1;
+  932            break;
+  933          case '{': case '[':
+  934            ++depth;
+  935            break;
+  936          case '}': case ']':
+  937            if (--depth == 0) { return i + 1; }
+  938            break;
+  939          default: break;
+  940        }
+  941      }
+  942      return n;

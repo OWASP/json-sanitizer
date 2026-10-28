@@ -1,0 +1,21 @@
+NODE: Travis CI (dead)
+ID: job:travis-ci
+KIND: job
+DOMAIN: D11 Build, CI & release
+LOCATION: .travis.yml
+LINES: 6
+FLAGS: entry point (public API or deployment/build config)
+
+CONNECTIONS (from the dependency map):
+- dispatch -> Maven build + surefire (job:mvn-verify)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+    1  language: java
+    2  
+    3  jdk:
+    4    - openjdk8
+    5    - openjdk11
+    6    - openjdk13

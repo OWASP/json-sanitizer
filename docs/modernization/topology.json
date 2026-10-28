@@ -1,0 +1,1381 @@
+{
+ "system": "OWASP JSON Sanitizer",
+ "root": {
+  "id": "sys",
+  "name": "json-sanitizer",
+  "kind": "system",
+  "children": [
+   {
+    "id": "dom:api",
+    "name": "D1 Public API",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#JsonSanitizer()",
+      "name": "JsonSanitizer.JsonSanitizer()",
+      "kind": "module",
+      "language": "java",
+      "loc": 11,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:318-328",
+      "description": "JsonSanitizer.JsonSanitizer() is the constructor pair that sets up a sanitizing pass over a piece of JSON-like input. For a developer, this means a null input is treated as the text \"null\". The nesting limit is clamped between 1 and MAXIMUM_NESTING_DEPTH, and DEFAULT_NESTING_DEPTH is used when no limit is given. It writes the jsonish input text and the maximumNestingDepth fields. JsonSanitizer.sanitize(String), JsonSanitizer.sanitize(CharSequence), JsonSanitizer.sanitize(Reader), EvalMinifier.minify(String) and JsonSanitizerTest all call it."
+     },
+     {
+      "id": "JsonSanitizer#sanitize(CharSequence)",
+      "name": "JsonSanitizer.sanitize(CharSequence)",
+      "kind": "module",
+      "language": "java",
+      "loc": 22,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:154-175",
+      "description": "JsonSanitizer.sanitize(CharSequence) is a public entry point that lets a developer sanitize JSON-like content held in any CharSequence, such as a StringBuilder, using DEFAULT_NESTING_DEPTH. It copies jsonish via toString() and sanitizes the copy, but when the input is already embeddable JSON, line 175 returns the original jsonish object rather than the copy, so later changes to a mutable jsonish do affect the result, contrary to the javadoc at line 148. It calls JsonSanitizer.JsonSanitizer(), JsonSanitizer.sanitize(), and JsonSanitizer.sanitize(String) for null input, reads the sanitizedJson output buffer, and is called by JsonSanitizerTest."
+     },
+     {
+      "id": "JsonSanitizer#sanitize(InputStream)",
+      "name": "JsonSanitizer.sanitize(InputStream)",
+      "kind": "module",
+      "language": "java",
+      "loc": 21,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:229-249",
+      "description": "JsonSanitizer.sanitize(InputStream) is a Public API entry point. It reads UTF-8 encoded JSON-like content from an InputStream and writes UTF-8 encoded embeddable JSON to an OutputStream. Malformed UTF-8 is decoded as U+FFFD, and the output is flushed but not closed. The whole input is read into memory, so callers handling untrusted input should limit its size. An overload accepts a custom maximumNestingDepth; otherwise DEFAULT_NESTING_DEPTH applies. It reads caller Reader / InputStream, writes caller Appendable / OutputStream, calls JsonSanitizer.sanitize(Reader), and is called by JsonSanitizerTest."
+     },
+     {
+      "id": "JsonSanitizer#sanitize(Reader)",
+      "name": "JsonSanitizer.sanitize(Reader)",
+      "kind": "module",
+      "language": "java",
+      "loc": 25,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:190-214",
+      "description": "JsonSanitizer.sanitize(Reader) is a public API entry point that lets a developer sanitize JSON-like content arriving as a stream. It reads the whole Reader into memory in 8192-char chunks, then writes embeddable JSON to an Appendable, using DEFAULT_NESTING_DEPTH unless a custom maximum nesting depth is given. It closes neither, and callers handling untrusted input should limit its size. It calls JsonSanitizer.JsonSanitizer(), JsonSanitizer.sanitize() and JsonSanitizer.toCharSequence, reads caller Reader / InputStream, writes caller Appendable / OutputStream, and is called by JsonSanitizer.sanitize(InputStream) and JsonSanitizerTest."
+     },
+     {
+      "id": "JsonSanitizer#sanitize(String)",
+      "name": "JsonSanitizer.sanitize(String)",
+      "kind": "module",
+      "language": "java",
+      "loc": 16,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:124-139",
+      "description": "JsonSanitizer.sanitize(String) is the library's public entry point (D1 Public API): given JSON-like content, it produces a string of JSON that is safe to embed and safe to pass to JavaScript's eval operator. It delegates to sanitize(jsonish, DEFAULT_NESTING_DEPTH), which calls the JsonSanitizer.JsonSanitizer() constructor, then JsonSanitizer.sanitize(), then JsonSanitizer.toString to return the result. It is called by JsonSanitizer.sanitize(CharSequence), and exercised by FuzzyTest and JsonSanitizerTest."
+     },
+     {
+      "id": "JsonSanitizer#toCharSequence",
+      "name": "JsonSanitizer.toCharSequence",
+      "kind": "module",
+      "language": "java",
+      "loc": 2,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1414-1415"
+     },
+     {
+      "id": "JsonSanitizer#toString",
+      "name": "JsonSanitizer.toString",
+      "kind": "module",
+      "language": "java",
+      "loc": 2,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1419-1420"
+     }
+    ]
+   },
+   {
+    "id": "dom:tok",
+    "name": "D2 Tokenizer / state machine",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#endOfQuotedString",
+      "name": "JsonSanitizer.endOfQuotedString",
+      "kind": "module",
+      "language": "java",
+      "loc": 14,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:950-963",
+      "description": "JsonSanitizer.endOfQuotedString is a 14-line tokenizer helper that finds where a quoted string ends, returning the position past its closing quote. It scans forward for the matching quote character, counting preceding backslashes so only a quote with an even number of backslashes ends it; if the string is never properly closed, it returns s.length(). The dependency map lists no outbound connections; it is called by JsonSanitizer.endOfBracketedValue and JsonSanitizer.sanitize()."
+     },
+     {
+      "id": "JsonSanitizer#isJsonSpecialChar",
+      "name": "JsonSanitizer.isJsonSpecialChar",
+      "kind": "module",
+      "language": "java",
+      "loc": 11,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1368-1378",
+      "description": "JsonSanitizer.isJsonSpecialChar, an 11-line private helper in the D2 Tokenizer / state machine domain (src/main/java/com/google/json/JsonSanitizer.java:1368-1378), checks whether the character at index i of the input matters to JSON structure. It returns true for any character at or below ' ' and for '\"', ',', ':', '[', ']', '{' and '}', and false for anything else. For developers, it appears to help the sanitizer find where unquoted or malformed tokens end. Per the dependency map, it reads jsonish (input text), is called by JsonSanitizer.sanitize(), and lists no outgoing calls."
+     },
+     {
+      "id": "JsonSanitizer#isKeyword",
+      "name": "JsonSanitizer.isKeyword",
+      "kind": "module",
+      "language": "java",
+      "loc": 9,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1334-1342",
+      "description": "JsonSanitizer.isKeyword is a 9-line helper in the D2 Tokenizer / state machine domain that answers a single question: does the span of input between start and end spell exactly false, null or true? For a developer, this is how the sanitizer recognizes those keywords; it checks only spans of length 5 or 4 and returns false for anything else. It reads jsonish (input text) and is called by JsonSanitizer.sanitize(); the packet shows no other connections."
+     },
+     {
+      "id": "JsonSanitizer#requireValueState",
+      "name": "JsonSanitizer.requireValueState",
+      "kind": "module",
+      "language": "java",
+      "loc": 31,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:819-849",
+      "description": "JsonSanitizer.requireValueState is the state-machine step that keeps output well-formed when a value appears. Depending on the current State and whether the value canBeKey, it repairs missing punctuation by inserting ':', ',' or an empty key \"\": at pos, then returns the next State such as AFTER_VALUE, AFTER_KEY or AFTER_ELEMENT. Called by JsonSanitizer.sanitize(), it calls JsonSanitizer.insert and reads the bracket stack (bracketDepth + isMap). It throws the shared static exception UNBRACKETED_COMMA when an element follows another at bracketDepth 0."
+     },
+     {
+      "id": "JsonSanitizer#sanitize()",
+      "name": "JsonSanitizer.sanitize()",
+      "kind": "module",
+      "language": "java",
+      "loc": 269,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:334-602",
+      "description": "JsonSanitizer.sanitize() is the library's core tokenizer and state machine: it walks the jsonish input text and rewrites JSON-like content into valid JSON, eliding comments and grouping parentheses, inserting null for missing values, and replacing too-deep arrays or objects with null. It calls helpers including sanitizeString, elide, insert, replace, requireValueState and endOfQuotedString; reads maximumNestingDepth and UNBRACKETED_COMMA; reads and writes the bracket stack and sanitizedJson output buffer; and is called by the sanitize(String), sanitize(CharSequence) and sanitize(Reader) overloads and EvalMinifier.minify(String)."
+     }
+    ]
+   },
+   {
+    "id": "dom:struct",
+    "name": "D3 Structure repair + depth limit",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#elideTrailingComma",
+      "name": "JsonSanitizer.elideTrailingComma",
+      "kind": "module",
+      "language": "java",
+      "loc": 28,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:966-993",
+      "description": "JsonSanitizer.elideTrailingComma removes a dangling comma just before a closing bracket, so developers receive well-formed JSON even when the input has a trailing comma. Starting from closeBracketPos, it scans right-to-left past whitespace, first through jsonish (input text) down to cleaned, then through sanitizedJson; a comma in the input is removed by calling JsonSanitizer.elide, while sanitizedJson is truncated at a comma found there, and any other character raises AssertionError. It reads both buffers and is called by JsonSanitizer.sanitize()."
+     },
+     {
+      "id": "JsonSanitizer#endOfBracketedValue",
+      "name": "JsonSanitizer.endOfBracketedValue",
+      "kind": "module",
+      "language": "java",
+      "loc": 21,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:922-942",
+      "description": "JsonSanitizer.endOfBracketedValue finds where a bracketed value ends: given a position holding an open bracket in jsonish, it returns the position past the matching close bracket, or the end of input if the value is never closed. Brackets inside strings and comments are ignored, and any close bracket matches any open bracket, mirroring how sanitize() repairs structure. It reads jsonish (input text), calls JsonSanitizer.endOfQuotedString and JsonSanitizer.endOfComment to skip quoted strings and comments, and is called by JsonSanitizer.sanitize()."
+     },
+     {
+      "id": "JsonSanitizer#getMaximumNestingDepth",
+      "name": "JsonSanitizer.getMaximumNestingDepth",
+      "kind": "module",
+      "language": "java",
+      "loc": 2,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:330-331"
+     },
+     {
+      "id": "JsonSanitizer#static-init",
+      "name": "JsonSanitizer.static-init",
+      "kind": "module",
+      "language": "java",
+      "loc": 16,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1423-1432",
+      "description": "JsonSanitizer.static-init is the class's one-time setup of shared constants, so every sanitization reuses them instead of rebuilding them. It defines UTF_8, the HEX_DIGITS table, DIGITS_BY_BASE_THAT_FIT_IN_63B, and UNBRACKETED_COMMA, described as an exception instance that can be thrown without the cost of unwinding the stack, which supports the structure repair domain (D3). Per the dependency map, it calls JsonSanitizer.UnbracketedComma, then reads and writes UNBRACKETED_COMMA (shared static exception), setting its stack trace to an empty StackTraceElement array."
+     },
+     {
+      "id": "JsonSanitizer.UnbracketedComma",
+      "name": "JsonSanitizer.UnbracketedComma",
+      "kind": "module",
+      "language": "java",
+      "loc": 4,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1390-1393"
+     }
+    ]
+   },
+   {
+    "id": "dom:cmt",
+    "name": "D4 Comment & junk removal",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#endOfComment",
+      "name": "JsonSanitizer.endOfComment",
+      "kind": "module",
+      "language": "java",
+      "loc": 31,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:883-913",
+      "description": "JsonSanitizer.endOfComment is a D4 Comment & junk removal helper that finds where a JS comment ends so the sanitizer can drop it. Given the position of a '/', it returns the index past a // line comment (ending at \\n, \\r, \\u2028 or \\u2029) or a /* block comment, falling back to the input length if the comment never closes, or start + 1 when no comment begins there. It reads jsonish (input text) and is called by JsonSanitizer.endOfBracketedValue and JsonSanitizer.sanitize()."
+     }
+    ]
+   },
+   {
+    "id": "dom:str",
+    "name": "D5 String normalization",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#appendHex",
+      "name": "JsonSanitizer.appendHex",
+      "kind": "module",
+      "language": "java",
+      "loc": 6,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1382-1387",
+      "description": "JsonSanitizer.appendHex, in the D5 String normalization domain, writes an integer n to the output as exactly nDigits lowercase hexadecimal characters, most significant first, extracting each 4-bit group with 0xf. For a developer, it appears to supply the hex digits of escapes the sanitizer emits (inferred; no header comment confirms). It appends to sanitizedJson, the sanitizedJson + cleaned (output buffer), and is called by JsonSanitizer.sanitizeString."
+     },
+     {
+      "id": "JsonSanitizer#hexVal",
+      "name": "JsonSanitizer.hexVal",
+      "kind": "module",
+      "language": "java",
+      "loc": 3,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1363-1365"
+     },
+     {
+      "id": "JsonSanitizer#isHex",
+      "name": "JsonSanitizer.isHex",
+      "kind": "module",
+      "language": "java",
+      "loc": 4,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1357-1360"
+     },
+     {
+      "id": "JsonSanitizer#isHexAt",
+      "name": "JsonSanitizer.isHexAt",
+      "kind": "module",
+      "language": "java",
+      "loc": 2,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1353-1354"
+     },
+     {
+      "id": "JsonSanitizer#isOct",
+      "name": "JsonSanitizer.isOct",
+      "kind": "module",
+      "language": "java",
+      "loc": 2,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1349-1350"
+     },
+     {
+      "id": "JsonSanitizer#isOctAt",
+      "name": "JsonSanitizer.isOctAt",
+      "kind": "module",
+      "language": "java",
+      "loc": 2,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1345-1346"
+     },
+     {
+      "id": "JsonSanitizer#sanitizeString",
+      "name": "JsonSanitizer.sanitizeString",
+      "kind": "module",
+      "language": "java",
+      "loc": 198,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:620-817",
+      "description": "JsonSanitizer.sanitizeString rewrites one string literal, jsonish[start:end], so a developer gets a valid JSON string that keeps its meaning under Javascript eval: it forces double-quotes, escapes CR, LF, U+2028 and U+2029, escapes sequences such as <script, <!--, --> and ]]> so output embeds safely in HTML script elements and XML CDATA sections, and rewrites hex, octal and other Javascript-only escapes. Called by JsonSanitizer.sanitize(), it reads jsonish and the sanitizedJson + cleaned output buffer, and calls appendHex, elide, insert, isHexAt, isOctAt, replace, runSlashPreceding, unescapedChar and unescapedCharRev."
+     }
+    ]
+   },
+   {
+    "id": "dom:emb",
+    "name": "D6 Embedding-safety escapes",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#runSlashPreceding",
+      "name": "JsonSanitizer.runSlashPreceding",
+      "kind": "module",
+      "language": "java",
+      "loc": 6,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1534-1539",
+      "description": "JsonSanitizer.runSlashPreceding is a small private helper in the D6 Embedding-safety escapes domain. It counts how many consecutive backslash characters end at a given position in the jsonish input, scanning backward from pos and returning the length of that run. For a library user, this appears to let the sanitizer tell whether a character inside a string is already escaped, though the packet has no header comment confirming that intent. Its only connection is a call from JsonSanitizer.sanitizeString. It reads only its arguments and writes nothing."
+     },
+     {
+      "id": "JsonSanitizer#unescapedChar",
+      "name": "JsonSanitizer.unescapedChar",
+      "kind": "module",
+      "language": "java",
+      "loc": 62,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1439-1500",
+      "description": "JsonSanitizer.unescapedChar decodes the character at position left in a string. That character can be written literally or as a backslash escape sequence: octal, \\x or \\u hex, or short escapes like \\n, \\r and \\t. Decoding it lets the embedding-safety checks see what a string literal really contains. It packs the char into the lowest 16 bits and the sequence length above them. It calls JsonSanitizer.hexVal, JsonSanitizer.isHex and JsonSanitizer.isOct, and is called by JsonSanitizer.sanitizeString and JsonSanitizer.unescapedCharRev."
+     },
+     {
+      "id": "JsonSanitizer#unescapedCharRev",
+      "name": "JsonSanitizer.unescapedCharRev",
+      "kind": "module",
+      "language": "java",
+      "loc": 28,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1504-1531",
+      "description": "JsonSanitizer.unescapedCharRev lets the sanitizer work out which character really ends at a given position in a string. It reads backwards from index rightIncl to check whether that position closes an escape sequence such as \\x00, \\u0000 or \\012. It decodes the sequence only when an odd number of backslashes come before it. Otherwise it returns the plain character combined with 0x10000, and it returns 0 for a negative index. It calls JsonSanitizer.unescapedChar to do the decoding, and JsonSanitizer.sanitizeString calls it."
+     }
+    ]
+   },
+   {
+    "id": "dom:num",
+    "name": "D7 Number normalization",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#canonicalizeNumber",
+      "name": "JsonSanitizer.canonicalizeNumber",
+      "kind": "module",
+      "language": "java",
+      "loc": 202,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1130-1331",
+      "description": "JsonSanitizer.canonicalizeNumber converts a run of characters that form a JS number into its canonical form, which is also a valid JSON number, returning true when the number could be canonicalized. For a developer, this means a number appearing where a property name is expected is rewritten into one consistent representation before being quoted, and an exponent out of the range of representable ints yields false. It calls JsonSanitizer.elide and JsonSanitizer.normalizeNumber, reads the sanitizedJson output buffer, and is called by JsonSanitizer.sanitize()."
+     },
+     {
+      "id": "JsonSanitizer#endOfDigitRun",
+      "name": "JsonSanitizer.endOfDigitRun",
+      "kind": "module",
+      "language": "java",
+      "loc": 6,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1395-1400",
+      "description": "JsonSanitizer.endOfDigitRun is a small helper in the D7 Number normalization domain. It finds where a run of decimal digits ends, which helps the library normalize numbers in the text it sanitizes. It starts at a given position and scans forward until it meets a character outside '0' through '9', then returns that index. If every character up to the limit is a digit, it returns the limit. It reads jsonish, the input text, and is called by JsonSanitizer.normalizeNumber."
+     },
+     {
+      "id": "JsonSanitizer#normalizeNumber",
+      "name": "JsonSanitizer.normalizeNumber",
+      "kind": "module",
+      "language": "java",
+      "loc": 114,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:1010-1123",
+      "description": "JsonSanitizer.normalizeNumber is the fast-path step that turns a JS-style number into a valid JSON number, so developers get parseable output even from loose input. It drops a leading '+' sign, inserts a '0' where the integer, fraction or exponent part is empty, recodes 0x hexadecimal and 0 octal forms to base 10, and elides leftover characters. It calls JsonSanitizer.elide, JsonSanitizer.endOfDigitRun and JsonSanitizer.insert, reads jsonish (input text) and sanitizedJson + cleaned (output buffer), and is called by JsonSanitizer.canonicalizeNumber and JsonSanitizer.sanitize()."
+     }
+    ]
+   },
+   {
+    "id": "dom:buf",
+    "name": "D8 Copy-on-write buffer",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "JsonSanitizer#elide",
+      "name": "JsonSanitizer.elide",
+      "kind": "module",
+      "language": "java",
+      "loc": 7,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:860-866",
+      "description": "JsonSanitizer.elide removes a span of the input, from start to end, from the sanitized output, which is how the library silently drops characters it will not pass through to the developer. Part of the D8 Copy-on-write buffer domain, it creates the sanitizedJson output buffer only when first needed, copies the untouched jsonish text from cleaned up to start, then advances cleaned to end. It reads jsonish, reads and writes sanitizedJson + cleaned, and is called by canonicalizeNumber, elideTrailingComma, normalizeNumber, replace, sanitize() and sanitizeString."
+     },
+     {
+      "id": "JsonSanitizer#insert",
+      "name": "JsonSanitizer.insert",
+      "kind": "module",
+      "language": "java",
+      "loc": 7,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:852-858",
+      "description": "JsonSanitizer.insert is a small private helper in the D8 Copy-on-write buffer domain. It adds output into the sanitized result at a given position, either a single char or a String, and removes nothing. For a developer using the library, it appears to be how the sanitizer adds characters while fixing up input. Both overloads just pass the work to JsonSanitizer.replace with an empty range (pos, pos). It is called by JsonSanitizer.sanitize(), JsonSanitizer.sanitizeString, JsonSanitizer.normalizeNumber and JsonSanitizer.requireValueState."
+     },
+     {
+      "id": "JsonSanitizer#replace",
+      "name": "JsonSanitizer.replace",
+      "kind": "module",
+      "language": "java",
+      "loc": 9,
+      "file": "src/main/java/com/google/json/JsonSanitizer.java:868-876",
+      "description": "JsonSanitizer.replace is a small helper in the Copy-on-write buffer domain that swaps a span of the input, from start to end, for corrected text, so a developer receives repaired JSON rather than the malformed original. It is overloaded for a single char or a String: each version first calls JsonSanitizer.elide to cut the span, then appends the replacement to sanitizedJson, the output buffer it reads. It is called by JsonSanitizer.insert, JsonSanitizer.sanitize() and JsonSanitizer.sanitizeString."
+     }
+    ]
+   },
+   {
+    "id": "dom:min",
+    "name": "D9 EvalMinifier",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "EvalMinifier#isLetterOrNumberChar",
+      "name": "EvalMinifier.isLetterOrNumberChar",
+      "kind": "module",
+      "language": "java",
+      "loc": 5,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:234-238",
+      "description": "EvalMinifier.isLetterOrNumberChar is a small private static helper in src/main/java/com/google/json/EvalMinifier.java (lines 234-238). It checks whether a single char counts as a letter-or-number character. That means digits '0' through '9', letters 'a' through 'z' in either case (it folds case with a bitwise or of 32), plus '_', '$', '-' and '.'. Developers never call it directly because it is an internal detail of minification. Its only mapped connection is an inbound call from EvalMinifier.minify(CharSequence), and it calls nothing. The packet does not show how minify uses the result."
+     },
+     {
+      "id": "EvalMinifier#minify(CharSequence)",
+      "name": "EvalMinifier.minify(CharSequence)",
+      "kind": "module",
+      "language": "java",
+      "loc": 152,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:70-221",
+      "description": "EvalMinifier.minify(CharSequence) is the private core of the minifier. It scans JSON text for repeated string and letter-or-number tokens of at least 4 characters that are not map keys. If potentialSavings exceed BOILERPLATE_COST plus SAVINGS_THRESHOLD, it rewrites the output into an envelope (ENVELOPE_P1 through ENVELOPE_P4) that puts generated names in place of the duplicates and drops whitespace. Otherwise it returns the input unchanged. It calls EvalMinifier.isLetterOrNumberChar, EvalMinifier.NameGenerator and EvalMinifier.Token (also via dispatch), and is called by EvalMinifier.minify(String)."
+     },
+     {
+      "id": "EvalMinifier#minify(String)",
+      "name": "EvalMinifier.minify(String)",
+      "kind": "module",
+      "language": "java",
+      "loc": 17,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:50-66",
+      "description": "EvalMinifier.minify(String) is a public entry point that renders JSON-like content safe for use with Javascript eval. Its header comment says it returns a valid Javascript expression with no free variables and no side-effects that can be embedded in an HTML <script></script> element or a CDATA section, though object output still needs wrapping in parentheses. It constructs a JsonSanitizer via JsonSanitizer.JsonSanitizer(), calls JsonSanitizer.sanitize() and JsonSanitizer.toCharSequence, then delegates to EvalMinifier.minify(CharSequence). It is called by EvalMinifierTest and JsonSanitizerTest."
+     },
+     {
+      "id": "EvalMinifier#nextIdentChar",
+      "name": "EvalMinifier.nextIdentChar",
+      "kind": "module",
+      "language": "java",
+      "loc": 10,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:335-344",
+      "description": "EvalMinifier.nextIdentChar is a small helper in the D9 EvalMinifier domain that advances one character in the sequence used to build short generated names: it steps through letters, jumps from 'z' to 'A', from 'Z' to '_', from '_' to '$', and then to '0' only when allowDigits is true, returning -1 when the sequence is exhausted (after '$' without digits, or after '9'). Its only recorded connection is an incoming call from EvalMinifier.NameGenerator, which appears to rely on it to step through candidate names."
+     },
+     {
+      "id": "EvalMinifier#regionMatches",
+      "name": "EvalMinifier.regionMatches",
+      "kind": "module",
+      "language": "java",
+      "loc": 8,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:279-286",
+      "description": "EvalMinifier.regionMatches is a small helper, 8 lines at src/main/java/com/google/json/EvalMinifier.java:279-286, that reports whether two CharSequence ranges hold exactly the same characters: it returns false when the lengths differ or any charAt comparison fails, and true otherwise. For a developer it is internal plumbing that the EvalMinifier domain relies on for exact text comparison, not an API to call directly. Its only recorded connection is an inbound call from EvalMinifier.Token; the packet shows nothing it reads or writes beyond its arguments."
+     },
+     {
+      "id": "EvalMinifier#static-init",
+      "name": "EvalMinifier.static-init",
+      "kind": "module",
+      "language": "java",
+      "loc": 16,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:291-303",
+      "description": "This static initializer builds constant data for EvalMinifier. Its main product is RESERVED_KEYWORDS, a String[][] of JS reserved words such as \"function\" and \"instanceof\", indexed by length, with each row kept sorted so Arrays.binarySearch can look words up. It appears intended to stop the minifier emitting reserved words as names (inferred; no callers are listed). It also defines the BOILERPLATE_COST and MARGINAL_VAR_COST constants. Its only dependency-map connection is a write to RESERVED_KEYWORDS (JS reserved-word table)."
+     },
+     {
+      "id": "EvalMinifier.NameGenerator",
+      "name": "EvalMinifier.NameGenerator",
+      "kind": "module",
+      "language": "java",
+      "loc": 29,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:305-333",
+      "description": "EvalMinifier.NameGenerator hands out short, unique identifier names for minified JS output. Each time its next() method is called, it returns the current name, starting from \"a\". It then moves to the next candidate by stepping through identifier characters, and makes the name longer when every position rolls over. It skips any candidate found in the JS reserved-word table, so the emitted code stays valid. It calls EvalMinifier.nextIdentChar and reads RESERVED_KEYWORDS. EvalMinifier.minify(CharSequence) and EvalMinifierTest call it."
+     },
+     {
+      "id": "EvalMinifier.Token",
+      "name": "EvalMinifier.Token",
+      "kind": "module",
+      "language": "java",
+      "loc": 37,
+      "file": "src/main/java/com/google/json/EvalMinifier.java:241-277",
+      "description": "EvalMinifier.Token is a private helper class that represents one span of characters, from start to end, within a CharSequence being minified. It precomputes a hash using multiplier 31 so that equal spans can be compared cheaply, and it orders tokens by start position through Comparable. A developer using the library never sees it: it is internal plumbing that appears to let the minifier spot repeated text. Its equals method calls EvalMinifier.regionMatches, and EvalMinifier.minify(CharSequence) both calls it and dispatches to it."
+     }
+    ]
+   },
+   {
+    "id": "dom:test",
+    "name": "D10 Tests & fuzzing",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "EvalMinifierTest",
+      "name": "EvalMinifierTest",
+      "kind": "module",
+      "language": "java",
+      "loc": 91,
+      "file": "src/test/java/com/google/json/EvalMinifierTest.java",
+      "description": "EvalMinifierTest is the test module (D10 Tests & fuzzing) that lets developers trust the minifier's output. It checks that output is correct and compact: repeated values get pooled into function parameters, property names are not pooled, 123456.789 is not mangled, and generated short names skip reserved words such as \"do\", \"if\" and \"in\". It calls EvalMinifier.minify(String) and EvalMinifier.NameGenerator. It reads RESERVED_KEYWORDS (JS reserved-word table) to confirm that each row's words have the row's length and are sorted. The Maven build + surefire job dispatches it."
+     },
+     {
+      "id": "FuzzyStringGenerator",
+      "name": "FuzzyStringGenerator",
+      "kind": "module",
+      "language": "java",
+      "loc": 241,
+      "file": "src/test/java/com/google/json/FuzzyTest.java:138-378",
+      "description": "FuzzyStringGenerator is a test-only module in the D10 Tests & fuzzing domain (src/test/java/com/google/json/FuzzyTest.java:138-378). It checks that the library holds up against unpredictable input. It is an endless Iterable<String> seeded by a Random that produces random JSON-like text, such as null, true, false, numbers, quoted strings, arrays and objects padded with random whitespace, and then mutated versions of that basis. Its only recorded connection is an incoming call from FuzzyTest. The map lists nothing that it calls, reads or writes."
+     },
+     {
+      "id": "FuzzyTest",
+      "name": "FuzzyTest",
+      "kind": "module",
+      "language": "java",
+      "loc": 102,
+      "file": "src/test/java/com/google/json/FuzzyTest.java:35-136",
+      "description": "FuzzyTest is a regression safeguard for developers relying on the library: it feeds up to 10000 pseudo-random JSON-like strings through the sanitizer to suss out boundary conditions in the JSON parser, and checks idempotence, meaning that sanitizing already-sanitized output must change nothing. The seed is always printed so failures can be replayed via the fuzz.seed system property. It calls FuzzyStringGenerator to produce inputs and calls JsonSanitizer.sanitize(String) on each input and again on its output. It is dispatched by the Maven build + surefire job (mvn-verify)."
+     },
+     {
+      "id": "JsonSanitizerTest",
+      "name": "JsonSanitizerTest",
+      "kind": "module",
+      "language": "java",
+      "loc": 415,
+      "file": "src/test/java/com/google/json/JsonSanitizerTest.java",
+      "description": "JsonSanitizerTest is the unit-test module that defines what developers can expect from the library. It compares sanitized output against golden strings to show how malformed or JavaScript-style input, such as single quotes, trailing commas, comments, unquoted keys and embedded <script> text, becomes safe JSON. It calls JsonSanitizer.sanitize(String), sanitize(CharSequence), sanitize(Reader) and sanitize(InputStream), the JsonSanitizer() constructor, JsonSanitizer.getMaximumNestingDepth and EvalMinifier.minify(String). The Maven build + surefire job (job:mvn-verify) runs it."
+     }
+    ]
+   },
+   {
+    "id": "dom:ops",
+    "name": "D11 Build, CI & release",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "job:mvn-verify",
+      "name": "Maven build + surefire",
+      "kind": "job",
+      "loc": 286,
+      "file": "pom.xml",
+      "description": "The Maven build + surefire job, defined in pom.xml, is how the json-sanitizer jar (version 1.2.4-SNAPSHOT) gets built, tested and packaged, so it tells a developer whether the library still works before it ships. The first 150 of 286 lines also set up source and javadoc jars through maven-source-plugin and maven-javadoc-plugin, plus deployment to ossrh. It dispatches the EvalMinifierTest, FuzzyTest and JsonSanitizerTest suites. The Release checklist calls it, and Travis CI (dead) used to dispatch it."
+     },
+     {
+      "id": "job:release",
+      "name": "Release checklist",
+      "kind": "job",
+      "loc": 110,
+      "file": "RELEASE-checklist.sh",
+      "description": "The Release checklist (RELEASE-checklist.sh) is a manual, 110-line maintainer script that describes how a new json-sanitizer version is published through oss.sonatype.org. For library users, it shows where released version numbers come from. It exits as soon as it is run, so it works as documentation rather than automation. Its steps compute NEW_VERSION and NEW_DEV_VERSION, clone the repository, rewrite pom.xml versions, push a signed release tag, deploy, and bump the -SNAPSHOT version. According to the dependency map, it calls the Maven build + surefire job (job:mvn-verify)."
+     },
+     {
+      "id": "job:travis-ci",
+      "name": "Travis CI (dead)",
+      "kind": "job",
+      "loc": 6,
+      "file": ".travis.yml",
+      "description": "The Travis CI (dead) node is the continuous-integration config in .travis.yml, a 6-line file in the D11 Build, CI & release domain. For a developer using the library, it shows that the project was once built as java on openjdk8, openjdk11 and openjdk13, though the node is labelled dead. Its one connection dispatches to the Maven build + surefire job (job:mvn-verify). The packet lists no other reads or writes, and it doesn't say why the job is dead or what replaced it."
+     }
+    ]
+   },
+   {
+    "id": "dom:data",
+    "name": "Shared state & caller I/O",
+    "kind": "domain",
+    "children": [
+     {
+      "id": "ds:RESERVED_KEYWORDS",
+      "name": "RESERVED_KEYWORDS (JS reserved-word table)",
+      "kind": "datastore"
+     },
+     {
+      "id": "ds:UNBRACKETED_COMMA",
+      "name": "UNBRACKETED_COMMA (shared static exception)",
+      "kind": "datastore"
+     },
+     {
+      "id": "ds:bracketStack",
+      "name": "bracketDepth + isMap (bracket stack)",
+      "kind": "datastore"
+     },
+     {
+      "id": "ds:callerInput",
+      "name": "caller Reader / InputStream",
+      "kind": "datastore"
+     },
+     {
+      "id": "ds:callerOutput",
+      "name": "caller Appendable / OutputStream",
+      "kind": "datastore"
+     },
+     {
+      "id": "ds:jsonish",
+      "name": "jsonish (input text)",
+      "kind": "datastore"
+     },
+     {
+      "id": "ds:maximumNestingDepth",
+      "name": "maximumNestingDepth",
+      "kind": "datastore"
+     },
+     {
+      "id": "ds:sanitizedJson",
+      "name": "sanitizedJson + cleaned (output buffer)",
+      "kind": "datastore"
+     }
+    ]
+   }
+  ]
+ },
+ "edges": [
+  {
+   "source": "EvalMinifier#minify(CharSequence)",
+   "target": "EvalMinifier#isLetterOrNumberChar",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier#minify(CharSequence)",
+   "target": "EvalMinifier.NameGenerator",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier#minify(CharSequence)",
+   "target": "EvalMinifier.Token",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier#minify(CharSequence)",
+   "target": "EvalMinifier.Token",
+   "kind": "dispatch"
+  },
+  {
+   "source": "EvalMinifier#minify(String)",
+   "target": "EvalMinifier#minify(CharSequence)",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier#minify(String)",
+   "target": "JsonSanitizer#JsonSanitizer()",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier#minify(String)",
+   "target": "JsonSanitizer#sanitize()",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier#minify(String)",
+   "target": "JsonSanitizer#toCharSequence",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier#static-init",
+   "target": "ds:RESERVED_KEYWORDS",
+   "kind": "write"
+  },
+  {
+   "source": "EvalMinifier.NameGenerator",
+   "target": "EvalMinifier#nextIdentChar",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifier.NameGenerator",
+   "target": "ds:RESERVED_KEYWORDS",
+   "kind": "read"
+  },
+  {
+   "source": "EvalMinifier.Token",
+   "target": "EvalMinifier#regionMatches",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifierTest",
+   "target": "EvalMinifier#minify(String)",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifierTest",
+   "target": "EvalMinifier.NameGenerator",
+   "kind": "call"
+  },
+  {
+   "source": "EvalMinifierTest",
+   "target": "ds:RESERVED_KEYWORDS",
+   "kind": "read"
+  },
+  {
+   "source": "FuzzyTest",
+   "target": "FuzzyStringGenerator",
+   "kind": "call"
+  },
+  {
+   "source": "FuzzyTest",
+   "target": "JsonSanitizer#sanitize(String)",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#JsonSanitizer()",
+   "target": "ds:jsonish",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#JsonSanitizer()",
+   "target": "ds:maximumNestingDepth",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#appendHex",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#appendHex",
+   "target": "ds:sanitizedJson",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#canonicalizeNumber",
+   "target": "JsonSanitizer#elide",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#canonicalizeNumber",
+   "target": "JsonSanitizer#normalizeNumber",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#canonicalizeNumber",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#elide",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#elide",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#elide",
+   "target": "ds:sanitizedJson",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#elideTrailingComma",
+   "target": "JsonSanitizer#elide",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#elideTrailingComma",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#elideTrailingComma",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#elideTrailingComma",
+   "target": "ds:sanitizedJson",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#endOfBracketedValue",
+   "target": "JsonSanitizer#endOfComment",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#endOfBracketedValue",
+   "target": "JsonSanitizer#endOfQuotedString",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#endOfBracketedValue",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#endOfComment",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#endOfDigitRun",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#getMaximumNestingDepth",
+   "target": "ds:maximumNestingDepth",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#insert",
+   "target": "JsonSanitizer#replace",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#isHexAt",
+   "target": "JsonSanitizer#isHex",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#isHexAt",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#isJsonSpecialChar",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#isKeyword",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#isOctAt",
+   "target": "JsonSanitizer#isOct",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#isOctAt",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#normalizeNumber",
+   "target": "JsonSanitizer#elide",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#normalizeNumber",
+   "target": "JsonSanitizer#endOfDigitRun",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#normalizeNumber",
+   "target": "JsonSanitizer#insert",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#normalizeNumber",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#normalizeNumber",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#normalizeNumber",
+   "target": "ds:sanitizedJson",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#replace",
+   "target": "JsonSanitizer#elide",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#replace",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#replace",
+   "target": "ds:sanitizedJson",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#requireValueState",
+   "target": "JsonSanitizer#insert",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#requireValueState",
+   "target": "ds:UNBRACKETED_COMMA",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#requireValueState",
+   "target": "ds:bracketStack",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#canonicalizeNumber",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#elide",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#elideTrailingComma",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#endOfBracketedValue",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#endOfComment",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#endOfQuotedString",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#insert",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#isJsonSpecialChar",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#isKeyword",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#normalizeNumber",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#replace",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#requireValueState",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "JsonSanitizer#sanitizeString",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "ds:UNBRACKETED_COMMA",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "ds:bracketStack",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "ds:bracketStack",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "ds:maximumNestingDepth",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize()",
+   "target": "ds:sanitizedJson",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(CharSequence)",
+   "target": "JsonSanitizer#JsonSanitizer()",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(CharSequence)",
+   "target": "JsonSanitizer#sanitize()",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(CharSequence)",
+   "target": "JsonSanitizer#sanitize(String)",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(CharSequence)",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(InputStream)",
+   "target": "JsonSanitizer#sanitize(Reader)",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(InputStream)",
+   "target": "ds:callerInput",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(InputStream)",
+   "target": "ds:callerOutput",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(Reader)",
+   "target": "JsonSanitizer#JsonSanitizer()",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(Reader)",
+   "target": "JsonSanitizer#sanitize()",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(Reader)",
+   "target": "JsonSanitizer#toCharSequence",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(Reader)",
+   "target": "ds:callerInput",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(Reader)",
+   "target": "ds:callerOutput",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(String)",
+   "target": "JsonSanitizer#JsonSanitizer()",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(String)",
+   "target": "JsonSanitizer#sanitize()",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitize(String)",
+   "target": "JsonSanitizer#toString",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#appendHex",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#elide",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#insert",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#isHexAt",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#isOctAt",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#replace",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#runSlashPreceding",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#unescapedChar",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "JsonSanitizer#unescapedCharRev",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#sanitizeString",
+   "target": "ds:sanitizedJson",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#static-init",
+   "target": "JsonSanitizer.UnbracketedComma",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#static-init",
+   "target": "ds:UNBRACKETED_COMMA",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#static-init",
+   "target": "ds:UNBRACKETED_COMMA",
+   "kind": "write"
+  },
+  {
+   "source": "JsonSanitizer#toCharSequence",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#toCharSequence",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#toString",
+   "target": "ds:jsonish",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#toString",
+   "target": "ds:sanitizedJson",
+   "kind": "read"
+  },
+  {
+   "source": "JsonSanitizer#unescapedChar",
+   "target": "JsonSanitizer#hexVal",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#unescapedChar",
+   "target": "JsonSanitizer#isHex",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#unescapedChar",
+   "target": "JsonSanitizer#isOct",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizer#unescapedCharRev",
+   "target": "JsonSanitizer#unescapedChar",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizerTest",
+   "target": "EvalMinifier#minify(String)",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizerTest",
+   "target": "JsonSanitizer#JsonSanitizer()",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizerTest",
+   "target": "JsonSanitizer#getMaximumNestingDepth",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizerTest",
+   "target": "JsonSanitizer#sanitize(CharSequence)",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizerTest",
+   "target": "JsonSanitizer#sanitize(InputStream)",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizerTest",
+   "target": "JsonSanitizer#sanitize(Reader)",
+   "kind": "call"
+  },
+  {
+   "source": "JsonSanitizerTest",
+   "target": "JsonSanitizer#sanitize(String)",
+   "kind": "call"
+  },
+  {
+   "source": "job:mvn-verify",
+   "target": "EvalMinifierTest",
+   "kind": "dispatch"
+  },
+  {
+   "source": "job:mvn-verify",
+   "target": "FuzzyTest",
+   "kind": "dispatch"
+  },
+  {
+   "source": "job:mvn-verify",
+   "target": "JsonSanitizerTest",
+   "kind": "dispatch"
+  },
+  {
+   "source": "job:release",
+   "target": "job:mvn-verify",
+   "kind": "call"
+  },
+  {
+   "source": "job:travis-ci",
+   "target": "job:mvn-verify",
+   "kind": "dispatch"
+  }
+ ],
+ "entryPoints": [
+  "EvalMinifier#minify(String)",
+  "JsonSanitizer#sanitize(CharSequence)",
+  "JsonSanitizer#sanitize(InputStream)",
+  "JsonSanitizer#sanitize(Reader)",
+  "JsonSanitizer#sanitize(String)",
+  "job:release",
+  "job:travis-ci"
+ ],
+ "deadEnds": [],
+ "observations": [
+  "Single point of failure: JsonSanitizer#sanitize() (269 lines) is the only tokenizer; every public overload (4) and EvalMinifier funnel into it, and it fans out to 13 helpers.",
+  "Store with too many writers: sanitizedJson + cleaned (output buffer) is written by 7 methods (appendHex, elide, elideTrailingComma, normalizeNumber, replace, sanitize(), sanitizeString). Copy-on-write via shared mutable fields couples every normalizer to the buffer; it is the seam to cut before any god-class split.",
+  "EvalMinifier is coupled to sanitizer internals, not its public API: it calls JsonSanitizer(), sanitize(), toCharSequence (package-private). Extracting or deprecating it means publishing that seam or inlining it.",
+  "Highest fan-in helpers: elide (6), JsonSanitizer() (5), sanitize() (4). These are the cheapest units to characterize first and the riskiest to change.",
+  "No persistent data stores, network or config: the 'datastores' here are the in-memory fields of one JsonSanitizer instance plus the caller's streams. No reflection, ServiceLoader or string-built class names found, so there are no unresolved dynamic targets; only JDK collection callbacks (Token.equals/hashCode/compareTo) are dispatched, and they are edged as such.",
+  "Bytecode shows no dead methods, but compile-time-dead code is invisible to it: the SUPER_VERBOSE_AND_SLOW_LOGGING=false blocks in the constructor and sanitize() are folded away by javac and remain source-level debt (ASSESSMENT debt #9).",
+  "Build/CI is the weakest link: the only automated entry (Travis) is dead and the release script exits on line 5, so job:mvn-verify (pom.xml + surefire defaults) is currently run by hand only."
+ ],
+ "flows": [
+  {
+   "name": "A web developer embeds untrusted JSON in a page",
+   "persona": "Web application developer",
+   "description": "A developer passes JSON-like text from a third party through the sanitizer before writing it into an HTML <script> block.",
+   "steps": [
+    {
+     "label": "Hand the untrusted text to the library",
+     "nodes": [
+      "JsonSanitizer#sanitize(String)"
+     ]
+    },
+    {
+     "label": "Set up a sanitizer with the nesting limit",
+     "nodes": [
+      "JsonSanitizer#JsonSanitizer()",
+      "ds:maximumNestingDepth"
+     ]
+    },
+    {
+     "label": "Walk the text token by token",
+     "nodes": [
+      "JsonSanitizer#sanitize()",
+      "ds:jsonish",
+      "JsonSanitizer#requireValueState"
+     ]
+    },
+    {
+     "label": "Drop comments and junk",
+     "nodes": [
+      "JsonSanitizer#endOfComment",
+      "JsonSanitizer#elide"
+     ]
+    },
+    {
+     "label": "Normalize strings and defuse </script>, <!--, ]]>",
+     "nodes": [
+      "JsonSanitizer#sanitizeString",
+      "JsonSanitizer#replace"
+     ]
+    },
+    {
+     "label": "Normalize numbers",
+     "nodes": [
+      "JsonSanitizer#normalizeNumber"
+     ]
+    },
+    {
+     "label": "Close any open brackets",
+     "nodes": [
+      "ds:bracketStack",
+      "JsonSanitizer#elideTrailingComma"
+     ]
+    },
+    {
+     "label": "Return safe JSON (or the original if already clean)",
+     "nodes": [
+      "JsonSanitizer#toCharSequence",
+      "ds:sanitizedJson"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "An API service cleans a streamed request body",
+   "persona": "Backend service team",
+   "description": "A service streams an incoming request body straight through the sanitizer into its response or downstream writer.",
+   "steps": [
+    {
+     "label": "Pass the request stream and an output stream",
+     "nodes": [
+      "JsonSanitizer#sanitize(InputStream)"
+     ]
+    },
+    {
+     "label": "Decode bytes as UTF-8 and read the body",
+     "nodes": [
+      "JsonSanitizer#sanitize(Reader)",
+      "ds:callerInput"
+     ]
+    },
+    {
+     "label": "Sanitize the whole body in memory",
+     "nodes": [
+      "JsonSanitizer#sanitize(CharSequence)",
+      "JsonSanitizer#sanitize()"
+     ]
+    },
+    {
+     "label": "Write safe JSON to the caller's sink",
+     "nodes": [
+      "ds:callerOutput"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A front-end team ships compact JSON for eval",
+   "persona": "Front-end performance engineer",
+   "description": "A team shrinks a large repetitive JSON payload into a smaller JavaScript expression that the browser evaluates.",
+   "steps": [
+    {
+     "label": "Hand the payload to the minifier",
+     "nodes": [
+      "EvalMinifier#minify(String)"
+     ]
+    },
+    {
+     "label": "Sanitize it first",
+     "nodes": [
+      "JsonSanitizer#JsonSanitizer()",
+      "JsonSanitizer#sanitize()",
+      "JsonSanitizer#toCharSequence"
+     ]
+    },
+    {
+     "label": "Find repeated tokens worth pooling",
+     "nodes": [
+      "EvalMinifier#minify(CharSequence)",
+      "EvalMinifier.Token"
+     ]
+    },
+    {
+     "label": "Give each pooled token a short safe name",
+     "nodes": [
+      "EvalMinifier.NameGenerator",
+      "ds:RESERVED_KEYWORDS"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "A maintainer proves a change is still safe",
+   "persona": "Library maintainer / release manager",
+   "description": "Before a release, a maintainer runs the golden, regression and fuzz suites against the sanitizer.",
+   "steps": [
+    {
+     "label": "Run the build",
+     "nodes": [
+      "job:release",
+      "job:mvn-verify"
+     ]
+    },
+    {
+     "label": "Check known inputs give known outputs",
+     "nodes": [
+      "JsonSanitizerTest",
+      "EvalMinifierTest"
+     ]
+    },
+    {
+     "label": "Fuzz random JSON-ish text for idempotence",
+     "nodes": [
+      "FuzzyTest",
+      "FuzzyStringGenerator"
+     ]
+    },
+    {
+     "label": "Exercise the public API",
+     "nodes": [
+      "JsonSanitizer#sanitize(String)",
+      "EvalMinifier#minify(String)"
+     ]
+    }
+   ]
+  }
+ ]
+}

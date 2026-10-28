@@ -1,0 +1,25 @@
+NODE: JsonSanitizer.insert
+ID: JsonSanitizer#insert
+KIND: module
+DOMAIN: D8 Copy-on-write buffer
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:852-858
+LINES: 7
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.replace (JsonSanitizer#replace)
+- call <- JsonSanitizer.normalizeNumber (JsonSanitizer#normalizeNumber)
+- call <- JsonSanitizer.requireValueState (JsonSanitizer#requireValueState)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+- call <- JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  852    private void insert(int pos, char ch) {
+  853      replace(pos, pos, ch);
+  854    }
+  855  
+  856    private void insert(int pos, String s) {
+  857      replace(pos, pos, s);
+  858    }

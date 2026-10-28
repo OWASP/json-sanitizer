@@ -1,0 +1,168 @@
+NODE: Maven build + surefire
+ID: job:mvn-verify
+KIND: job
+DOMAIN: D11 Build, CI & release
+LOCATION: pom.xml
+LINES: 286
+
+CONNECTIONS (from the dependency map):
+- dispatch -> EvalMinifierTest (EvalMinifierTest)
+- dispatch -> FuzzyTest (FuzzyTest)
+- dispatch -> JsonSanitizerTest (JsonSanitizerTest)
+- call <- Release checklist (job:release)
+- dispatch <- Travis CI (dead) (job:travis-ci)
+
+HEADER COMMENT:
+(none)
+
+SOURCE (excerpt: first 150 of 286 lines):
+    1  <?xml version="1.0" encoding="UTF-8"?>
+    2  <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    3  
+    4    <modelVersion>4.0.0</modelVersion>
+    5  
+    6    <groupId>com.mikesamuel</groupId>
+    7    <artifactId>json-sanitizer</artifactId>
+    8    <packaging>jar</packaging>
+    9  
+   10    <!--
+   11      When the version ends with "-SNAPSHOT", then `mvn deploy` moves it to
+   12      the snapshot directory instead of into staging proper.
+   13     -->
+   14    <version>1.2.4-SNAPSHOT</version>
+   15    <name>json-sanitizer</name>
+   16    <description>
+   17  Given JSON-like content, converts it to valid JSON.
+   18  
+   19  This can be attached at either end of a data-pipeline to help satisfy
+   20  Postel's principle:
+   21  
+   22      be conservative in what you do, be liberal in what you accept from
+   23      others
+   24  
+   25  Applied to JSON-like content from others, it will produce well-formed
+   26  JSON that should satisfy any parser you use.
+   27  
+   28  Applied to your output before you send, it will coerce minor mistakes in
+   29  encoding and make it easier to embed your JSON in HTML and XML.
+   30    </description>
+   31    <url>https://github.com/OWASP/json-sanitizer</url>
+   32  
+   33    <licenses>
+   34      <license>
+   35        <name>Apache License, Version 2.0</name>
+   36        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+   37        <distribution>repo</distribution>
+   38      </license>
+   39    </licenses>
+   40  
+   41    <scm>
+   42      <connection>scm:git:git://github.com/OWASP/json-sanitizer.git</connection>
+   43      <developerConnection>scm:git:git://github.com/OWASP/json-sanitizer.git</developerConnection>
+   44      <url>https://github.com/OWASP/json-sanitizer</url>
+   45    </scm>
+   46  
+   47    <distributionManagement>
+   48      <snapshotRepository>
+   49        <id>ossrh</id>
+   50        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+   51      </snapshotRepository>
+   52      <repository>
+   53        <id>ossrh</id>
+   54        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+   55      </repository>
+   56    </distributionManagement>
+   57  
+   58    <issueManagement>
+   59      <system>GitHub</system>
+   60      <url>https://github.com/OWASP/json-sanitizer/issues</url>
+   61    </issueManagement>
+   62  
+   63    <organization>
+   64      <name>OWASP</name>
+   65      <url>https://owasp.org</url>
+   66    </organization>
+   67  
+   68    <build>
+   69      <pluginManagement>
+   70        <plugins>
+   71          <!-- Maven doesn't provide by it's hidden super pom a version, so enforce here -->
+   72          <plugin>
+   73            <groupId>org.apache.maven.plugins</groupId>
+   74            <artifactId>maven-project-info-reports-plugin</artifactId>
+   75            <version>3.0.0</version>
+   76          </plugin>
+   77          <!-- Latest fluido needs 3.6+ -->
+   78          <plugin>
+   79            <groupId>org.apache.maven.plugins</groupId>
+   80            <artifactId>maven-site-plugin</artifactId>
+   81            <version>3.8.2</version>
+   82          </plugin>
+   83          <!-- Support running through sonar -->
+   84          <plugin>
+   85            <groupId>org.sonarsource.scanner.maven</groupId>
+   86            <artifactId>sonar-maven-plugin</artifactId>
+   87            <version>3.7.0.1746</version>
+   88          </plugin>
+   89        </plugins>
+   90      </pluginManagement>
+   91  
+   92      <plugins>
+   93        <plugin>
+   94          <groupId>org.sonatype.plugins</groupId>
+   95          <artifactId>nexus-staging-maven-plugin</artifactId>
+   96          <version>1.6.8</version>
+   97          <extensions>true</extensions>
+   98          <configuration>
+   99            <serverId>ossrh</serverId>
+  100            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+  101            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+  102            <!-- This staging profile ID gleaned by logging in to
+  103                 oss.sonatype.org, clicking "Staging Profiles" on the left,
+  104                 selecting "com.mikesamuel", and extracting the most hexy
+  105                 looking bit from the URL which looks like
+  106                 https://oss.sonatype.org/#stagingProfiles;5fd62edf6679f6
+  107            -->
+  108            <stagingProfileId>5fd62edf6679f6</stagingProfileId>
+  109            <executions>
+  110              <execution>
+  111                <id>default-deploy</id>
+  112                <phase>deploy</phase>
+  113                <goals>
+  114                  <goal>deploy</goal>
+  115                </goals>
+  116              </execution>
+  117            </executions>
+  118          </configuration>
+  119        </plugin>
+  120        <!-- For building the source jar. -->
+  121        <plugin>
+  122          <groupId>org.apache.maven.plugins</groupId>
+  123          <artifactId>maven-source-plugin</artifactId>
+  124          <version>3.2.1</version>
+  125          <executions>
+  126            <execution>
+  127              <id>attach-sources</id>
+  128              <goals>
+  129                <goal>jar-no-fork</goal>
+  130              </goals>
+  131            </execution>
+  132          </executions>
+  133        </plugin>
+  134        <!-- For building the javadoc jar. -->
+  135        <plugin>
+  136          <groupId>org.apache.maven.plugins</groupId>
+  137          <artifactId>maven-javadoc-plugin</artifactId>
+  138          <version>3.1.1</version>
+  139          <executions>
+  140            <execution>
+  141              <id>attach-javadocs</id>
+  142              <goals>
+  143                <goal>jar</goal>
+  144              </goals>
+  145            </execution>
+  146          </executions>
+  147          <configuration>
+  148            <nohelp>true</nohelp>
+  149            <show>public</show>
+  150            <doctitle>JSON Sanitizer</doctitle>

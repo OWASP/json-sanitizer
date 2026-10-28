@@ -1,0 +1,33 @@
+NODE: JsonSanitizer.endOfQuotedString
+ID: JsonSanitizer#endOfQuotedString
+KIND: module
+DOMAIN: D2 Tokenizer / state machine
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:950-963
+LINES: 14
+
+CONNECTIONS (from the dependency map):
+- call <- JsonSanitizer.endOfBracketedValue (JsonSanitizer#endOfBracketedValue)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+  945    /**
+  946     * The position past the last character within the quotes of the quoted
+  947     * string starting at {@code s.charAt(start)}.  Does not assume that the
+  948     * quoted string is properly closed.
+  949     */
+
+SOURCE :
+  950    private static int endOfQuotedString(String s, int start) {
+  951      char quote = s.charAt(start);
+  952      for (int i = start; (i = s.indexOf(quote, i + 1)) >= 0;) {
+  953        // If there are an even number of preceding backslashes then this is
+  954        // the end of the string.
+  955        int slashRunStart = i;
+  956        while (slashRunStart > start && s.charAt(slashRunStart - 1) == '\\') {
+  957          --slashRunStart;
+  958        }
+  959        if (((i - slashRunStart) & 1) == 0) {
+  960          return i + 1;
+  961        }
+  962      }
+  963      return s.length();

@@ -1,0 +1,21 @@
+%% critical path: A web developer embeds untrusted JSON in a page (Web application developer)
+%% no telemetry was available (ASSESSMENT: library, no APM), so no p50/p99;
+%% measured worst case: SEC-001, 1M hex digits ~26 s in normalizeNumber
+flowchart TD
+  S1["1. Hand the untrusted text to the library — sanitize(String)"]
+  S2["2. Set up a sanitizer with the nesting limit — JsonSanitizer(), maximumNestingDepth"]
+  S1 --> S2
+  S3["3. Walk the text token by token — sanitize(), jsonish (input text), requireValueState"]
+  S2 --> S3
+  S4["4. Drop comments and junk — endOfComment, elide"]
+  S3 --> S4
+  S5["5. Normalize strings and defuse &lt;/script&gt;, &lt;!--, ]]&gt; — sanitizeString, replace"]
+  S4 --> S5
+  S6["6. Normalize numbers — normalizeNumber"]
+  S5 --> S6
+  S7["7. Close any open brackets — bracketDepth + isMap (bracket stack), elideTrailingComma"]
+  S6 --> S7
+  S8["8. Return safe JSON (or the original if already clean) — toCharSequence, sanitizedJson + cleaned (output buffer)"]
+  S7 --> S8
+  classDef hot fill:#fecaca,stroke:#b91c1c,stroke-width:2px
+  class S6 hot

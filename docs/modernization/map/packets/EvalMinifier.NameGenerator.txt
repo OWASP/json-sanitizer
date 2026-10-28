@@ -1,0 +1,46 @@
+NODE: EvalMinifier.NameGenerator
+ID: EvalMinifier.NameGenerator
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:305-333
+LINES: 29
+
+CONNECTIONS (from the dependency map):
+- call -> EvalMinifier.nextIdentChar (EvalMinifier#nextIdentChar)
+- read -> RESERVED_KEYWORDS (JS reserved-word table) (ds:RESERVED_KEYWORDS)
+- call <- EvalMinifier.minify(CharSequence) (EvalMinifier#minify(CharSequence))
+- call <- EvalMinifierTest (EvalMinifierTest)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  305    static final class NameGenerator {
+  306  
+  307      private final StringBuilder sb = new StringBuilder("a");
+  308  
+  309      @SuppressWarnings("synthetic-access")
+  310      public String next() {
+  311        while (true) {
+  312          String name = sb.toString();
+  313  
+  314          int sbLen = sb.length();
+  315          for (int i = sbLen; --i >= 0;) {
+  316            int next = nextIdentChar(sb.charAt(i), i != 0);
+  317            if (next < 0) {
+  318              sb.setCharAt(i, 'a');
+  319              if (i == 0) { sb.append('a'); }
+  320            } else {
+  321              sb.setCharAt(i, (char) next);
+  322              break;
+  323            }
+  324          }
+  325  
+  326          int nameLen = name.length();
+  327          if (nameLen >= RESERVED_KEYWORDS.length
+  328              || Arrays.binarySearch(RESERVED_KEYWORDS[nameLen], name) < 0) {
+  329            return name;
+  330          }
+  331        }
+  332      }
+  333    }

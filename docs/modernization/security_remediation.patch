@@ -1,0 +1,104 @@
+# json-sanitizer security remediation (shareable). Paths are relative to legacy/json-sanitizer.
+# Apply from the workspace root: patch -p1 -d legacy/json-sanitizer < analysis/json-sanitizer/security_remediation.patch
+# No credential findings: there is no security_remediation.local.patch.
+
+# SEC-001 (CWE-407, High): quadratic BigInteger reencoding of long hex/octal literals.
+# SEC-001 hunk 1 (normalizeNumber): strip leading zeros; copy already-decimal digits instead of a
+#   BigInteger round trip; above 1024 significant octal/hex digits (already past the largest double)
+#   emit 1e999, which JS reads as Infinity, and elide any trailing fraction/exponent.
+# SEC-001 hunk 2: the MAX_EXACT_REENCODED_DIGITS constant.
+--- a/src/main/java/com/google/json/JsonSanitizer.java
++++ b/src/main/java/com/google/json/JsonSanitizer.java
+@@ -1070,19 +1070,38 @@
+         // Putting out the underflowed value is the least bad option.
+         elide(pos, intEnd);
+ 
+-        String digits = jsonish.substring(firstDigitIndex, intEnd);
++        // Leading zeroes do not change the value.
++        int firstSignificantIndex = firstDigitIndex;
++        while (firstSignificantIndex < intEnd
++               && jsonish.charAt(firstSignificantIndex) == '0') {
++          ++firstSignificantIndex;
++        }
++        String digits = jsonish.substring(firstSignificantIndex, intEnd);
+ 
+         int nDigits = digits.length();
+         int base = probableBase > maxDigVal ? probableBase : maxDigVal > 10 ? 16 : 10;
+         if (nDigits == 0) {
+           sanitizedJson.append('0');
++        } else if (base == 10) {
++          // Already decimal, so copy rather than round-tripping through
++          // BigInteger which takes time quadratic in nDigits.
++          sanitizedJson.append(digits);
+         } else if (DIGITS_BY_BASE_THAT_FIT_IN_63B[base] >= nDigits) {
+           long value = Long.parseLong(digits, base);
+           sanitizedJson.append(value);
+-        } else {
++        } else if (nDigits <= MAX_EXACT_REENCODED_DIGITS) {
+           // If there are lots of digits, we need to reencode using a BigInteger
+           BigInteger value = new BigInteger(digits, base);
+           sanitizedJson.append(value);
++        } else {
++          // BigInteger parsing is quadratic in nDigits, so an attacker could
++          // use a long literal to tie up the sanitizer.  Any value this large
++          // is at least 8**MAX_EXACT_REENCODED_DIGITS, far past the largest
++          // double, so JS evaluates it to Infinity, as it does 1e999.
++          // A fraction or exponent cannot follow 1e999, so elide any.
++          sanitizedJson.append("1e999");
++          elide(intEnd, end);
++          return;
+         }
+       }
+     }
+@@ -1430,6 +1449,12 @@
+           21 /* base 8  */, 19, 18 /* base 10 */, 18, 17, 17, 16, 16,
+           15 /* base 16 */,
+   };
++
++  /**
++   * The most significant octal or hex digits that are reencoded exactly as
++   * decimal.  Enough for any value that fits in a double.
++   */
++  private static final int MAX_EXACT_REENCODED_DIGITS = 1024;
+ 
+   /**
+    * Looks for a literal character or escape sequence at left in s.
+# SEC-001 (CWE-407, High): regression test: exact output up to the cap, valid JSON in linear time past it.
+--- a/src/test/java/com/google/json/JsonSanitizerTest.java
++++ b/src/test/java/com/google/json/JsonSanitizerTest.java
+@@ -292,6 +292,35 @@
+   }
+ 
+   @Test
++  public static final void testLongReencodedNumbers() {
++    // Leading zeroes do not count toward the digit limit.
++    assertSanitized("[255]", "[0x" + repeat('0', 5000) + "ff]");
++    assertSanitized("[83]", "[" + repeat('0', 5000) + "123]");  // Octal.
++    // Long decimal-with-leading-zero literals are copied, not reencoded.
++    String nines = repeat('9', 100000);
++    assertSanitized("[" + nines + "]", "[0" + nines + "]");
++    // Up to the limit, hex and octal are reencoded exactly.
++    String maxHex = repeat('f', 1024);
++    assertSanitized(
++        "[" + new java.math.BigInteger(maxHex, 16) + "]", "[0x" + maxHex + "]");
++    // Past it, they become Infinity without quadratic BigInteger parsing.
++    long t0 = System.nanoTime();
++    assertSanitized("[1e999]", "[0x" + repeat('f', 1000000) + "]");
++    assertSanitized("[-1e999]", "[-0" + repeat('7', 1000000) + "]");
++    assertSanitized("{\"1e+999\":0}", "{0x" + repeat('f', 1000000) + ":0}");
++    assertSanitized("[1e999]", "[0" + repeat('7', 2000) + ".5e+3]");
++    assertSanitized("{\"1e+999\":0}", "{0" + repeat('7', 2000) + ".5e-3:0}");
++    long elapsedMs = (System.nanoTime() - t0) / 1000000;
++    assertTrue("took " + elapsedMs + "ms", elapsedMs < 2000);
++  }
++
++  private static String repeat(char ch, int n) {
++    char[] chars = new char[n];
++    java.util.Arrays.fill(chars, ch);
++    return new String(chars);
++  }
++
++  @Test
+   public static final void testSlashFour() {
+     // Found by Fabian Meumertzheim using CI Fuzz (https://www.code-intelligence.com)
+     assertEquals("\"y\\u0004\"", JsonSanitizer.sanitize("y\\4")); // "y\4"

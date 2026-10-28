@@ -1,0 +1,28 @@
+NODE: JsonSanitizer.replace
+ID: JsonSanitizer#replace
+KIND: module
+DOMAIN: D8 Copy-on-write buffer
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:868-876
+LINES: 9
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.elide (JsonSanitizer#elide)
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- write -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- JsonSanitizer.insert (JsonSanitizer#insert)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+- call <- JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  868    private void replace(int start, int end, char ch) {
+  869      elide(start, end);
+  870      sanitizedJson.append(ch);
+  871    }
+  872  
+  873    private void replace(int start, int end, String s) {
+  874      elide(start, end);
+  875      sanitizedJson.append(s);
+  876    }

@@ -1,0 +1,135 @@
+NODE: EvalMinifierTest
+ID: EvalMinifierTest
+KIND: module
+DOMAIN: D10 Tests & fuzzing
+LOCATION: src/test/java/com/google/json/EvalMinifierTest.java
+LINES: 91
+
+CONNECTIONS (from the dependency map):
+- call -> EvalMinifier.minify(String) (EvalMinifier#minify(String))
+- call -> EvalMinifier.NameGenerator (EvalMinifier.NameGenerator)
+- read -> RESERVED_KEYWORDS (JS reserved-word table) (ds:RESERVED_KEYWORDS)
+- dispatch <- Maven build + surefire (job:mvn-verify)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+    1  // Copyright (C) 2012 Google Inc.
+    2  //
+    3  // Licensed under the Apache License, Version 2.0 (the "License");
+    4  // you may not use this file except in compliance with the License.
+    5  // You may obtain a copy of the License at
+    6  //
+    7  //      http://www.apache.org/licenses/LICENSE-2.0
+    8  //
+    9  // Unless required by applicable law or agreed to in writing, software
+   10  // distributed under the License is distributed on an "AS IS" BASIS,
+   11  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   12  // See the License for the specific language governing permissions and
+   13  // limitations under the License.
+   14  
+   15  package com.google.json;
+   16  
+   17  import junit.framework.TestCase;
+   18  
+   19  import org.junit.Test;
+   20  
+   21  import com.google.json.EvalMinifier.NameGenerator;
+   22  
+   23  import java.util.Arrays;
+   24  import java.util.HashSet;
+   25  import java.util.Set;
+   26  
+   27  @SuppressWarnings("javadoc")
+   28  public final class EvalMinifierTest extends TestCase {
+   29  
+   30    private static void assertMinified(String golden, String input) {
+   31      String actual = EvalMinifier.minify(input);
+   32      assertEquals(input, golden, actual);
+   33    }
+   34  
+   35    @Test
+   36    public static final void testMinify() {
+   37      assertMinified("null", "null");
+   38      assertMinified("[null,null]", "[null,null]");
+   39      assertMinified("[null,null,null,null]", "[null,null,null,null]");
+   40      assertMinified(
+   41          "[null,null,null,null,null,null,null]",
+   42          "[null,null,null,null,null,null,null]");
+   43      assertMinified(
+   44          "[null,null,null,null,null,null,null,null,null,null,null,null,null]",
+   45          "[null,null,null,null,null,null,null,null,null,null,null,null,null]");
+   46      assertMinified(
+   47          "(function(a){"
+   48          + "return[a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a]}(null))",
+   49          "[null,null,null,null,null,null,null,null,null,null,null,null,null, "
+   50          + "null,null,null,null,null,null,null,null,null,null,null,null,null]");
+   51      assertMinified(
+   52          "(function(a,b){return"
+   53          + "[a,b,a,b,a,b,a,b,a,b,a,b,a,b,a,b,a,b,a,b,a,\"z\"]"
+   54          + "}(\"foo\",\"bar\"))",
+   55          "['foo','bar','foo','bar','foo','bar','foo','bar','foo','bar','foo',"
+   56          + "'bar','foo','bar','foo','bar','foo','bar','foo','bar','foo','z']");
+   57  
+   58      String longStr = "\"A very very very very loooooooong string that can be"
+   59          + " pooled, but not when it appears as a property name.\"";
+   60      assertMinified(
+   61          "(function(a){return"
+   62          + "{" + longStr + ":a,\"a\":[a,a,42,null,a]}}(" + longStr + "))",
+   63          "{" + longStr + ": " + longStr + ","
+   64          + " a:[" + longStr + "," + longStr + ",42,," + longStr + "]}");
+   65  
+   66      assertMinified(
+   67          "(function(a){return"
+   68          // Don't convert 123456.789 to a.789
+   69          + "[a,a,a,a,123456.789,a,a,a,a,a,a,a,a,a,123456e-3,a,a,a]"
+   70          + "}(123456))",
+   71          "[123456,123456,123456,123456,123456.789,123456,123456,123456,123456,"
+   72          + "123456,123456,123456,123456,123456,123456e-3,123456,123456,123456]");
+   73    }
+   74  
+   75    @Test
+   76    public static final void testNameGenerator() {
+   77      NameGenerator ng = new NameGenerator();
+   78      assertEquals("a", ng.next());
+   79      assertEquals("b", ng.next());
+   80      assertEquals("c", ng.next());
+   81      for (int i = 30; --i >= 0;) { ng.next(); }
+   82      assertEquals("H", ng.next());
+   83      Set<String> shortNames = new HashSet<String>();
+   84      for (int i = 0; i < 1000; ++i) { shortNames.add(ng.next()); }
+   85      assertTrue(shortNames.contains("ar"));
+   86      assertFalse(shortNames.contains("as"));
+   87      assertTrue(shortNames.contains("au"));
+   88      assertTrue(shortNames.contains("dn"));
+   89      assertFalse(shortNames.contains("do"));
+   90      assertTrue(shortNames.contains("dp"));
+   91      assertTrue(shortNames.contains("ie"));
+   92      assertFalse(shortNames.contains("if"));
+   93      assertTrue(shortNames.contains("ig"));
+   94      assertTrue(shortNames.contains("ih"));
+   95      assertTrue(shortNames.contains("ii"));
+   96      assertTrue(shortNames.contains("ij"));
+   97      assertTrue(shortNames.contains("ik"));
+   98      assertTrue(shortNames.contains("il"));
+   99      assertTrue(shortNames.contains("im"));
+  100      assertFalse(shortNames.contains("in"));
+  101      assertTrue(shortNames.contains("io"));
+  102    }
+  103  
+  104    @Test
+  105    public static final void testReservedKeywordsSorted() {
+  106      String[][] keywords = EvalMinifier.RESERVED_KEYWORDS;
+  107      for (int len = 0; len < keywords.length; ++len) {
+  108        String[] row = keywords[len];
+  109        for (int i = 0; i < row.length; ++i) {
+  110          assertEquals(row[i], len, row[i].length());
+  111          if (i > 0) {
+  112            assertTrue(row[i - 1] + " < " + row[i], row[i - 1].compareTo(row[i]) < 0);
+  113          }
+  114          assertTrue(row[i], Arrays.binarySearch(row, row[i]) >= 0);
+  115        }
+  116      }
+  117    }
+  118  }

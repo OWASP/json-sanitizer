@@ -1,0 +1,164 @@
+NODE: FuzzyStringGenerator
+ID: FuzzyStringGenerator
+KIND: module
+DOMAIN: D10 Tests & fuzzing
+LOCATION: src/test/java/com/google/json/FuzzyTest.java:138-378
+LINES: 241
+
+CONNECTIONS (from the dependency map):
+- call <- FuzzyTest (FuzzyTest)
+
+HEADER COMMENT:
+(none)
+
+SOURCE (excerpt: first 150 of 241 lines):
+  138  final class FuzzyStringGenerator implements Iterable<String> {
+  139    final Random rnd;
+  140  
+  141    FuzzyStringGenerator(Random rnd) {
+  142      this.rnd = rnd;
+  143    }
+  144  
+  145    @Override
+  146    public Iterator<String> iterator() {
+  147      return new Iterator<String>() {
+  148        private @Nullable String basis;
+  149        private @Nullable String pending;
+  150        @Override
+  151        public boolean hasNext() {
+  152          return true;
+  153        }
+  154        @Override
+  155        public String next() {
+  156          if (pending == null) {
+  157            fuzz();
+  158          }
+  159          String s = pending;
+  160          pending = null;
+  161          if (0 == rnd.nextInt(16)) { basis = null; }
+  162          return s;
+  163        }
+  164        @Override
+  165        public void remove() {
+  166          throw new UnsupportedOperationException();
+  167        }
+  168        @SuppressWarnings("synthetic-access")
+  169        private void fuzz() {
+  170          if (basis == null) {
+  171            pending = basis = makeRandomJson();
+  172            return;
+  173          }
+  174          pending = mutate(basis);
+  175        }
+  176      };
+  177    }
+  178  
+  179    private String makeRandomJson() {
+  180      int maxDepth = 1 + rnd.nextInt(8);
+  181      int maxBreadth = 4 + rnd.nextInt(16);
+  182      StringBuilder sb = new StringBuilder();
+  183      appendWhitespace(sb);
+  184      appendRandomJson(maxDepth, maxBreadth, sb);
+  185      appendWhitespace(sb);
+  186      return sb.toString();
+  187    }
+  188  
+  189    private static final String[] FLOAT_FORMAT_STRING = {
+  190      "%g", "%G", "%e", "%E", "%f"
+  191    };
+  192  
+  193    private static final String[] INT_FORMAT_STRING = {
+  194      "%x", "%X", "%d"
+  195    };
+  196  
+  197  
+  198    private void appendRandomJson(
+  199        int maxDepth, int maxBreadth, StringBuilder sb) {
+  200      int r = rnd.nextInt(maxDepth > 0 ? 8 : 6);
+  201  
+  202      switch (r) {
+  203        case 0: sb.append("null"); break;
+  204        case 1: sb.append("true"); break;
+  205        case 2: sb.append("false"); break;
+  206        case 3: {
+  207          String fmt = FLOAT_FORMAT_STRING
+  208            [rnd.nextInt(FLOAT_FORMAT_STRING.length)];
+  209          sb.append(String.format(Locale.ROOT, fmt, 1.0 / rnd.nextGaussian()));
+  210          break;
+  211        }
+  212        case 4: {
+  213          switch (rnd.nextInt(3)) {
+  214            case 0: break;
+  215            case 1: sb.append('-'); break;
+  216            case 2: sb.append('+'); break;
+  217          }
+  218          String fmt = INT_FORMAT_STRING
+  219            [rnd.nextInt(INT_FORMAT_STRING.length)];
+  220          BigInteger num = new BigInteger(randomDecimalDigits(maxBreadth * 2));
+  221          sb.append(String.format(Locale.ROOT, fmt, num));
+  222          break;
+  223        }
+  224        case 5:
+  225          appendRandomString(maxBreadth, sb);
+  226          break;
+  227        case 6:
+  228          sb.append('[');
+  229          appendWhitespace(sb);
+  230          for (int i = rnd.nextInt(maxBreadth); --i >= 0;) {
+  231            appendWhitespace(sb);
+  232            appendRandomJson(maxDepth - 1, Math.max(1, maxBreadth - 1), sb);
+  233            if (i != 1) {
+  234              appendWhitespace(sb);
+  235              sb.append(',');
+  236            }
+  237          }
+  238          appendWhitespace(sb);
+  239          sb.append(']');
+  240          break;
+  241        case 7:
+  242          sb.append('{');
+  243          appendWhitespace(sb);
+  244          for (int i = rnd.nextInt(maxBreadth); --i >= 0;) {
+  245            appendWhitespace(sb);
+  246            appendRandomString(maxBreadth, sb);
+  247            appendWhitespace(sb);
+  248            sb.append(':');
+  249            appendWhitespace(sb);
+  250            appendRandomJson(maxDepth - 1, Math.max(1, maxBreadth - 1), sb);
+  251            if (i != 1) {
+  252              appendWhitespace(sb);
+  253              sb.append(',');
+  254            }
+  255          }
+  256          appendWhitespace(sb);
+  257          sb.append('}');
+  258          break;
+  259      }
+  260    }
+  261  
+  262    private void appendRandomString(int maxBreadth, StringBuilder sb) {
+  263      sb.append('"');
+  264      appendRandomChars(rnd.nextInt(maxBreadth * 4), sb);
+  265      sb.append('"');
+  266    }
+  267  
+  268    private void appendRandomChars(int nChars, StringBuilder sb) {
+  269      for (int i = nChars; --i >= 0;) {
+  270        appendRandomChar(sb);
+  271      }
+  272    }
+  273  
+  274    private void appendRandomChar(StringBuilder sb) {
+  275      char delim = rnd.nextInt(8) == 0 ? '\'' : '"';
+  276      int cpMax;
+  277      switch (rnd.nextInt(7)) {
+  278        case 0: case 1: case 2: case 3: cpMax = 0x100; break;
+  279        case 4: case 5: cpMax = 0x10000; break;
+  280        default: cpMax = Character.MAX_CODE_POINT; break;
+  281      }
+  282      int cp = rnd.nextInt(cpMax);
+  283      boolean encode = false;
+  284      if (cp == delim || cp < 0x20 || cp == '\\') {
+  285        encode = true;
+  286      }
+  287      if (!encode && 0 == rnd.nextInt(8)) {

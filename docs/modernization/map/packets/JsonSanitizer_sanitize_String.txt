@@ -1,0 +1,42 @@
+NODE: JsonSanitizer.sanitize(String)
+ID: JsonSanitizer#sanitize(String)
+KIND: module
+DOMAIN: D1 Public API
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:124-139
+LINES: 16
+FLAGS: entry point (public API or deployment/build config)
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.JsonSanitizer() (JsonSanitizer#JsonSanitizer())
+- call -> JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+- call -> JsonSanitizer.toString (JsonSanitizer#toString)
+- call <- FuzzyTest (FuzzyTest)
+- call <- JsonSanitizer.sanitize(CharSequence) (JsonSanitizer#sanitize(CharSequence))
+- call <- JsonSanitizerTest (JsonSanitizerTest)
+
+HEADER COMMENT:
+  117    /**
+  118     * Given JSON-like content, produces a string of JSON that is safe to embed,
+  119     * safe to pass to JavaScript's {@code eval} operator.
+  120     *
+  121     * @param jsonish JSON-like content.
+  122     * @return embeddable JSON
+  123     */
+
+SOURCE :
+  124    public static String sanitize(String jsonish) {
+  125      return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
+  126    }
+  127  
+  128    /**
+  129     * Same as {@link JsonSanitizer#sanitize(String)}, but allows to set a custom
+  130     * maximum nesting depth.
+  131     *
+  132     * @param jsonish JSON-like content.
+  133     * @param maximumNestingDepth maximum nesting depth.
+  134     * @return embeddable JSON
+  135     */
+  136    public static String sanitize(String jsonish, int maximumNestingDepth) {
+  137      JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
+  138      s.sanitize();
+  139      return s.toString();

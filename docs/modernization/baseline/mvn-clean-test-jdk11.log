@@ -1,0 +1,64 @@
+[INFO] Scanning for projects...
+[INFO] Loaded 24259 auto-discovered prefixes for remote repository central (prefixes-central.txt)
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to rso-public-grid (https://repository.sonatype.org/content/groups/sonatype-public-grid/): repository.sonatype.org: nodename nor servname provided, or not known
+[INFO] Inspecting build with total of 1 modules...
+[INFO] Installing Nexus Staging features:
+[INFO]   ... total of 1 executions of maven-deploy-plugin replaced with nexus-staging-maven-plugin
+[INFO] 
+[INFO] -------------------< com.mikesamuel:json-sanitizer >--------------------
+[INFO] Building json-sanitizer 1.2.4-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Loaded 74 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots.txt)
+[INFO] 
+[INFO] --- clean:3.5.0:clean (default-clean) @ json-sanitizer ---
+[INFO] 
+[INFO] --- jacoco:0.8.5:prepare-agent (jacoco-initialize) @ json-sanitizer ---
+[INFO] argLine set to -javaagent:/Users/jmanico/.m2/repository/org/jacoco/org.jacoco.agent/0.8.5/org.jacoco.agent-0.8.5-runtime.jar=destfile=/private/tmp/claude-503/-Users-jmanico-Dropbox-github-json-sanitizer/812b7257-986e-43a1-9404-50c230591dce/scratchpad/legacy-baseline/target/coverage-reports/jacoco-unit.exec
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ json-sanitizer ---
+[INFO] skip non existing resourceDirectory /private/tmp/claude-503/-Users-jmanico-Dropbox-github-json-sanitizer/812b7257-986e-43a1-9404-50c230591dce/scratchpad/legacy-baseline/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.16.0:compile (default-compile) @ json-sanitizer ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 3 source files with javac [debug target 1.6] to target/classes
+[WARNING] bootstrap class path not set in conjunction with -source 6
+[WARNING] source value 6 is obsolete and will be removed in a future release
+[WARNING] target value 1.6 is obsolete and will be removed in a future release
+[WARNING] To suppress warnings about obsolete options, use -Xlint:-options.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ json-sanitizer ---
+[INFO] skip non existing resourceDirectory /private/tmp/claude-503/-Users-jmanico-Dropbox-github-json-sanitizer/812b7257-986e-43a1-9404-50c230591dce/scratchpad/legacy-baseline/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.16.0:testCompile (default-testCompile) @ json-sanitizer ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 3 source files with javac [debug target 1.6] to target/test-classes
+[WARNING] bootstrap class path not set in conjunction with -source 6
+[WARNING] source value 6 is obsolete and will be removed in a future release
+[WARNING] target value 1.6 is obsolete and will be removed in a future release
+[WARNING] To suppress warnings about obsolete options, use -Xlint:-options.
+[INFO] 
+[INFO] --- surefire:3.6.0:test (default-test) @ json-sanitizer ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.google.json.EvalMinifierTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in com.google.json.EvalMinifierTest
+[INFO] Running com.google.json.FuzzyTest
+Fuzzing with -Dfuzz.seed=ea41f76fb21e5107
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.378 s -- in com.google.json.FuzzyTest
+[INFO] Running com.google.json.JsonSanitizerTest
+[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.039 s -- in com.google.json.JsonSanitizerTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 28, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.585 s
+[INFO] Finished at: 2026-10-27T18:12:25+01:00
+[INFO] ------------------------------------------------------------------------

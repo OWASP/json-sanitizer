@@ -1,0 +1,24 @@
+NODE: JsonSanitizer.isKeyword
+ID: JsonSanitizer#isKeyword
+KIND: module
+DOMAIN: D2 Tokenizer / state machine
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1334-1342
+LINES: 9
+
+CONNECTIONS (from the dependency map):
+- read -> jsonish (input text) (ds:jsonish)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+ 1334    private boolean isKeyword(int start, int end) {
+ 1335      int n = end - start;
+ 1336      if (n == 5) {
+ 1337        return "false".regionMatches(0, jsonish, start, n);
+ 1338      } else if (n == 4) {
+ 1339        return "null".regionMatches(0, jsonish, start, n)
+ 1340            || "true".regionMatches(0, jsonish, start, n);
+ 1341      }
+ 1342      return false;

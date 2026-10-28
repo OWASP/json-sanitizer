@@ -1,0 +1,53 @@
+NODE: EvalMinifier.Token
+ID: EvalMinifier.Token
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:241-277
+LINES: 37
+
+CONNECTIONS (from the dependency map):
+- call -> EvalMinifier.regionMatches (EvalMinifier#regionMatches)
+- call <- EvalMinifier.minify(CharSequence) (EvalMinifier#minify(CharSequence))
+- dispatch <- EvalMinifier.minify(CharSequence) (EvalMinifier#minify(CharSequence))
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  241    private static final class Token implements Comparable<Token> {
+  242      private final int start, end, hashCode;
+  243      private final @Nonnull CharSequence seq;
+  244      @Nullable Token prev;
+  245      @Nullable String name;
+  246  
+  247      Token(int start, int end, CharSequence seq) {
+  248        this.start = start;
+  249        this.end = end;
+  250        this.seq = seq;
+  251        int hc = 0;
+  252        for (int i = start; i < end; ++i) {
+  253          char ch = seq.charAt(i);
+  254          hc = hc * 31 + ch;
+  255        }
+  256        this.hashCode = hc;
+  257      }
+  258  
+  259      @Override
+  260      public boolean equals(@Nullable Object o) {
+  261        if (!(o instanceof Token)) { return false; }
+  262        Token that = (Token) o;
+  263        if (this.hashCode != that.hashCode) { return false; }
+  264        return regionMatches(
+  265            this.seq, this.start, this.end, that.seq, that.start, that.end);
+  266      }
+  267  
+  268      @Override
+  269      public int hashCode() {
+  270        return hashCode;
+  271      }
+  272  
+  273      @Override
+  274      public int compareTo(Token t) {
+  275        return start - t.start;
+  276      }
+  277    }

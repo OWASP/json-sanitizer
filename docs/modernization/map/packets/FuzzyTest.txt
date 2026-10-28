@@ -1,0 +1,122 @@
+NODE: FuzzyTest
+ID: FuzzyTest
+KIND: module
+DOMAIN: D10 Tests & fuzzing
+LOCATION: src/test/java/com/google/json/FuzzyTest.java:35-136
+LINES: 102
+
+CONNECTIONS (from the dependency map):
+- call -> FuzzyStringGenerator (FuzzyStringGenerator)
+- call -> JsonSanitizer.sanitize(String) (JsonSanitizer#sanitize(String))
+- dispatch <- Maven build + surefire (job:mvn-verify)
+
+HEADER COMMENT:
+   30  /**
+   31   * Tries a series of pseudo-random variants of a string of JSON to suss out
+   32   * boundary conditions in the JSON parser.
+   33   */
+   34  @SuppressWarnings("javadoc")
+
+SOURCE :
+   35  public final class FuzzyTest extends TestCase {
+   36    @Test
+   37    public static final void testSanitizerLikesFuzzyWuzzyInputs()
+   38    throws Throwable {
+   39      int nRuns = 10000;
+   40      long seed;
+   41      {
+   42        // Try to fetch a seed from a system property so that we can replay failed
+   43        // tests.
+   44        String seedString = System.getProperty("fuzz.seed", null);
+   45        if (seedString != null) {
+   46          seed = Long.parseLong(seedString, 16);
+   47        } else {
+   48          // Use java.util.Random's default constructor to generate a seed since
+   49          // it does a pretty good job of making a good non-crypto-strong seed.
+   50          seed = new Random().nextLong();
+   51        }
+   52      }
+   53  
+   54      // Dump the seed so that failures can be reproduced with only this line
+   55      // from the test log.
+   56      System.err.println("Fuzzing with -Dfuzz.seed=" + Long.toHexString(seed));
+   57      System.err.flush();
+   58  
+   59      Random rnd = new Random(seed);
+   60      for (String fuzzyWuzzyString : new FuzzyStringGenerator(rnd)) {
+   61        try {
+   62          String sanitized0 = JsonSanitizer.sanitize(fuzzyWuzzyString);
+   63          String sanitized1 = JsonSanitizer.sanitize(sanitized0);
+   64          // Test idempotence.
+   65          if (!sanitized0.equals(sanitized1)) {
+   66            int commonPrefixLen = 0;
+   67            int minLength = Math.min(sanitized0.length(), sanitized1.length());
+   68            while (commonPrefixLen < minLength) {
+   69              if (sanitized0.charAt(commonPrefixLen) != sanitized1.charAt(commonPrefixLen)) {
+   70                break;
+   71              }
+   72              ++commonPrefixLen;
+   73            }
+   74  
+   75            int right0 = sanitized0.length();
+   76            int right1 = sanitized1.length();
+   77            while (right0 > commonPrefixLen && right1 > commonPrefixLen) {
+   78              if (sanitized0.charAt(right0 - 1) != sanitized1.charAt(right1 - 1)) {
+   79                break;
+   80              }
+   81              --right0;
+   82              --right1;
+   83            }
+   84  
+   85            int commonSuffixLen = sanitized0.length() - right0;
+   86  
+   87            System.err.println("Difference at " + commonPrefixLen + " to -" + commonSuffixLen);
+   88            System.err.println("Before: " + excerpt(sanitized0, commonPrefixLen, right0));
+   89            System.err.println("After:  " + excerpt(sanitized0, commonPrefixLen, right1));
+   90          }
+   91          assertEquals(fuzzyWuzzyString + "  =>  " + sanitized0, sanitized0,
+   92                       sanitized1);
+   93        } catch (Throwable th) {
+   94          System.err.println("Failed on `" + fuzzyWuzzyString + "`");
+   95          hexDump(fuzzyWuzzyString.getBytes("UTF16"), System.err);
+   96          System.err.println("");
+   97          throw th;
+   98        }
+   99        if (--nRuns <= 0) { break; }
+  100      }
+  101    }
+  102  
+  103  
+  104    private static void hexDump(byte[] bytes, Appendable app)
+  105      throws IOException {
+  106      for (int i = 0; i < bytes.length; ++i) {
+  107        if ((i % 16) == 0) {
+  108          if (i != 0) {
+  109            app.append('\n');
+  110          }
+  111        } else {
+  112          app.append(' ');
+  113        }
+  114        byte b = bytes[i];
+  115        app.append("0123456789ABCDEF".charAt((b >>> 4) & 0xf));
+  116        app.append("0123456789ABCDEF".charAt((b >>> 0) & 0xf));
+  117      }
+  118    }
+  119  
+  120    private static String excerpt(String s, int left, int right) {
+  121      int leftIncl = left - 10;
+  122      boolean ellipseLeft = leftIncl > 0;
+  123      if (!ellipseLeft) { leftIncl = 0; }
+  124  
+  125      int rightIncl = right + 10;
+  126      boolean ellipseRight = s.length() > rightIncl;
+  127      if (!ellipseRight) {
+  128        rightIncl = s.length();
+  129      }
+  130  
+  131      return s.substring(leftIncl, rightIncl)
+  132              .replace("\r", "\\r")
+  133              .replace("\n", "\\n")
+  134              .replace("\\", "\\\\");
+  135    }
+  136  }

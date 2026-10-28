@@ -1,0 +1,21 @@
+NODE: JsonSanitizer.endOfDigitRun
+ID: JsonSanitizer#endOfDigitRun
+KIND: module
+DOMAIN: D7 Number normalization
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1395-1400
+LINES: 6
+
+CONNECTIONS (from the dependency map):
+- read -> jsonish (input text) (ds:jsonish)
+- call <- JsonSanitizer.normalizeNumber (JsonSanitizer#normalizeNumber)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+ 1395    private int endOfDigitRun(int start, int limit) {
+ 1396      for (int end = start; end < limit; ++end) {
+ 1397        char ch = jsonish.charAt(end);
+ 1398        if (!('0' <= ch && ch <= '9')) { return end; }
+ 1399      }
+ 1400      return limit;

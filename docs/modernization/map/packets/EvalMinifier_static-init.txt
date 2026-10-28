@@ -1,0 +1,31 @@
+NODE: EvalMinifier.static-init
+ID: EvalMinifier#static-init
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:291-303
+LINES: 16
+
+CONNECTIONS (from the dependency map):
+- write -> RESERVED_KEYWORDS (JS reserved-word table) (ds:RESERVED_KEYWORDS)
+
+HEADER COMMENT:
+  290    // Indexed by length; each row must stay sorted for Arrays.binarySearch.
+
+SOURCE (all 2 static-initializer segments):
+  229    private static final int BOILERPLATE_COST =
+  230        (ENVELOPE_P1 + ENVELOPE_P2 + ENVELOPE_P3 + ENVELOPE_P4).length();
+  231    private static final int MARGINAL_VAR_COST = ",,".length();
+   ...
+  291    static final String[][] RESERVED_KEYWORDS = {
+  292      {},
+  293      {},
+  294      {"as", "do", "if", "in", "of"},
+  295      {"for", "get", "let", "new", "set", "try", "var"},
+  296      {"case", "else", "enum", "eval", "from", "null", "this", "true", "void", "with"},
+  297      {"async", "await", "break", "catch", "class", "const", "false", "super", "throw", "while", "yield"},
+  298      {"delete", "export", "import", "public", "return", "static", "switch", "target", "typeof"},
+  299      {"default", "extends", "finally", "package", "private"},
+  300      {"continue", "debugger", "function"},
+  301      {"arguments", "interface", "protected"},
+  302      {"implements", "instanceof"}
+  303    };

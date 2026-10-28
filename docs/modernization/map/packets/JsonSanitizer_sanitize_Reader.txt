@@ -1,0 +1,57 @@
+NODE: JsonSanitizer.sanitize(Reader)
+ID: JsonSanitizer#sanitize(Reader)
+KIND: module
+DOMAIN: D1 Public API
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:190-214
+LINES: 25
+FLAGS: entry point (public API or deployment/build config)
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.JsonSanitizer() (JsonSanitizer#JsonSanitizer())
+- call -> JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+- call -> JsonSanitizer.toCharSequence (JsonSanitizer#toCharSequence)
+- read -> caller Reader / InputStream (ds:callerInput)
+- write -> caller Appendable / OutputStream (ds:callerOutput)
+- call <- JsonSanitizer.sanitize(InputStream) (JsonSanitizer#sanitize(InputStream))
+- call <- JsonSanitizerTest (JsonSanitizerTest)
+
+HEADER COMMENT:
+  178    /**
+  179     * Reads JSON-like content from {@code in} and writes embeddable JSON to
+  180     * {@code out}.
+  181     * <p>
+  182     * The whole input is read into memory before sanitizing, so callers handling
+  183     * untrusted input should limit its size.  Neither {@code in} nor {@code out}
+  184     * is closed.
+  185     *
+  186     * @param in JSON-like content.
+  187     * @param out receives embeddable JSON.
+  188     * @throws IOException if reading {@code in} or writing {@code out} fails.
+  189     */
+
+SOURCE :
+  190    public static void sanitize(Reader in, Appendable out) throws IOException {
+  191      sanitize(in, out, DEFAULT_NESTING_DEPTH);
+  192    }
+  193  
+  194    /**
+  195     * Same as {@link JsonSanitizer#sanitize(Reader, Appendable)}, but allows to
+  196     * set a custom maximum nesting depth.
+  197     *
+  198     * @param in JSON-like content.
+  199     * @param out receives embeddable JSON.
+  200     * @param maximumNestingDepth maximum nesting depth.
+  201     * @throws IOException if reading {@code in} or writing {@code out} fails.
+  202     */
+  203    public static void sanitize(
+  204        Reader in, Appendable out, int maximumNestingDepth) throws IOException {
+  205      StringBuilder jsonish = new StringBuilder();
+  206      char[] buf = new char[8192];
+  207      for (int n; (n = in.read(buf)) >= 0;) {
+  208        jsonish.append(buf, 0, n);
+  209      }
+  210      JsonSanitizer s = new JsonSanitizer(
+  211          jsonish.toString(), maximumNestingDepth);
+  212      s.sanitize();
+  213      out.append(s.toCharSequence());
+  214    }

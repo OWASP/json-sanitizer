@@ -1,0 +1,65 @@
+%% json-sanitizer: functional domains (from legacy-analyst, 2026-10-27)
+%% JS = src/main/java/com/google/json/JsonSanitizer.java, EM = .../EvalMinifier.java
+graph TD
+  subgraph Entry["Public API"]
+    API["D1 sanitize() overloads<br/>String / CharSequence / Reader / InputStream<br/>JS:111-251, 318-332, 1414-1421"]
+  end
+
+  subgraph Core["Sanitizer core (JsonSanitizer.java)"]
+    SCAN["D2 Tokenizer / state machine<br/>JS:257-284, 334-562, 819-850, 950-964"]
+    STRUCT["D3 Structure repair + depth limit<br/>JS:377-466, 564-601, 922-943, 966-995"]
+    CMT["D4 Comment / whitespace / junk elision<br/>JS:358-375, 468-475, 501-504, 883-914"]
+    BUF[("D8 Copy-on-write buffer<br/>jsonish, sanitizedJson, cleaned<br/>JS:291-314, 852-876")]
+  end
+
+  subgraph Normalizers["Value normalizers"]
+    STR["D5 String normalization & escapes<br/>JS:620-817"]
+    EMB["D6 Embedding-safety escapes<br/>script / comment / CDATA<br/>JS:654-726, 1434-1540"]
+    NUM["D7 Number normalize / canonicalize<br/>JS:997-1332"]
+  end
+
+  subgraph Optional["Optional subsystems"]
+    MIN["D9 EvalMinifier<br/>EM:50-345"]
+  end
+
+  subgraph Verify["Verification"]
+    TEST["D10 JsonSanitizerTest / FuzzyTest / EvalMinifierTest"]
+  end
+
+  subgraph Ops["Build, release, docs"]
+    BUILD["D11 pom.xml, package-info, README, docs/, RELEASE-checklist.sh, .travis.yml"]
+    DANG["Stale references<br/>Travis CI, OSSRH, findbugs report, owasp.org wiki"]
+  end
+
+  API -->|"new JsonSanitizer + sanitize()"| SCAN
+  API -->|"reads result"| BUF
+  API -->|"clamped depth JS:323"| STRUCT
+
+  SCAN -->|"requireValueState, bracket cases"| STRUCT
+  SCAN -->|"parens, comments, junk"| CMT
+  SCAN -->|"sanitizeString JS:364,543,553"| STR
+  SCAN -->|"normalizeNumber JS:549"| NUM
+  SCAN -->|"canonicalizeNumber (number keys) JS:537"| NUM
+  SCAN -->|"insert quote, top-level comma truncation"| BUF
+
+  STRUCT -->|"endOfQuotedString JS:928"| SCAN
+  STRUCT -->|"endOfComment JS:931"| CMT
+  STRUCT -->|"null-out, close brackets"| BUF
+
+  CMT -->|"elide"| BUF
+
+  STR -->|"cases for < > ]"| EMB
+  STR -->|"replace / insert / appendHex"| BUF
+  EMB -->|"replace"| BUF
+  NUM -->|"elide, insert, in-place edits"| BUF
+
+  MIN -->|"package-private ctor + sanitize()"| SCAN
+  MIN -->|"toCharSequence"| BUF
+
+  TEST -->|"static sanitize"| API
+  TEST -->|"getMaximumNestingDepth"| STRUCT
+  TEST -->|"minify, NameGenerator, RESERVED_KEYWORDS"| MIN
+
+  BUILD -->|"jsr305 annotations"| MIN
+  BUILD -->|"packages & documents"| API
+  BUILD -.->|"stale links"| DANG

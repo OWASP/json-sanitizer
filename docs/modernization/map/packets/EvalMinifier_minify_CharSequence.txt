@@ -1,0 +1,168 @@
+NODE: EvalMinifier.minify(CharSequence)
+ID: EvalMinifier#minify(CharSequence)
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:70-221
+LINES: 152
+
+CONNECTIONS (from the dependency map):
+- call -> EvalMinifier.isLetterOrNumberChar (EvalMinifier#isLetterOrNumberChar)
+- call -> EvalMinifier.NameGenerator (EvalMinifier.NameGenerator)
+- call -> EvalMinifier.Token (EvalMinifier.Token)
+- dispatch -> EvalMinifier.Token (EvalMinifier.Token)
+- call <- EvalMinifier.minify(String) (EvalMinifier#minify(String))
+
+HEADER COMMENT:
+   69    @SuppressWarnings("synthetic-access")
+
+SOURCE (excerpt: first 150 of 152 lines):
+   70    private static CharSequence minify(CharSequence json) {
+   71      Map<Token, Token> pool = new LinkedHashMap<Token, Token>();
+   72      int n = json.length();
+   73      for (int i = 0; i < n; ++i) {
+   74        char ch = json.charAt(i);
+   75        int tokEnd;
+   76        if (ch == '"') {
+   77          for (tokEnd = i + 1; tokEnd < n; ++tokEnd) {
+   78            char tch = json.charAt(tokEnd);
+   79            if (tch == '\\') {
+   80              ++tokEnd;
+   81            } else if (tch == '"') {
+   82              ++tokEnd;
+   83              break;
+   84            }
+   85          }
+   86          // A trailing backslash would otherwise step past the end of input.
+   87          if (tokEnd > n) { tokEnd = n; }
+   88        } else if (isLetterOrNumberChar(ch)) {
+   89          tokEnd = i + 1;
+   90          while (tokEnd < n && isLetterOrNumberChar(json.charAt(tokEnd))) {
+   91            ++tokEnd;
+   92          }
+   93        } else {
+   94          continue;
+   95        }
+   96  
+   97        int nextNonWhitespace = tokEnd;
+   98        for (; nextNonWhitespace < n; ++nextNonWhitespace) {
+   99          char wch = json.charAt(nextNonWhitespace);
+  100          if (!(wch == '\t' || wch == '\n' || wch == '\r' || wch == ' ')) {
+  101            break;
+  102          }
+  103        }
+  104  
+  105        // If the string is followed by a ':' then it is a map key and cannot be
+  106        // substituted with an identifier.
+  107        // In JavaScript, { a: 1 } is the same as { "a": 1 } regardless of
+  108        // what the identifier "a" resolves to.
+  109        if ((nextNonWhitespace == n || ':' != json.charAt(nextNonWhitespace))
+  110            && tokEnd - i >= 4) {
+  111          Token tok = new Token(i, tokEnd, json);
+  112          @Nullable Token last = pool.put(tok, tok);
+  113          if (last != null) {
+  114            tok.prev = last;
+  115          }
+  116        }
+  117  
+  118        i = nextNonWhitespace - 1;
+  119      }
+  120  
+  121      // Now look at all the token groups that have a next, and then count up the
+  122      // savings to see if they meet the cost of the boilerplate.
+  123      int potentialSavings = 0;
+  124      List<Token> dupes = new ArrayList<Token>();
+  125      for (Iterator<Token> values = pool.values().iterator(); values.hasNext();) {
+  126        Token tok = values.next();
+  127        if (tok.prev == null) {
+  128          values.remove();
+  129          continue;
+  130        }
+  131        int chainDepth = 0;
+  132        for (Token t = tok; t != null; t = t.prev) {
+  133          ++chainDepth;
+  134        }
+  135        int tokSavings = (chainDepth - 1) * (tok.end - tok.start)
+  136            - MARGINAL_VAR_COST;
+  137        if (tokSavings > 0) {
+  138          potentialSavings += tokSavings;
+  139          for (Token t = tok; t != null; t = t.prev) {
+  140            dupes.add(t);
+  141          }
+  142        } else {
+  143          // Not worth a parameter, so don't emit a name or argument for it.
+  144          values.remove();
+  145        }
+  146      }
+  147      if (potentialSavings <= BOILERPLATE_COST + SAVINGS_THRESHOLD) {
+  148        return json;
+  149      }
+  150  
+  151      // Dump the tokens into an array and sort them.
+  152      Collections.sort(dupes);
+  153  
+  154      int nTokens = dupes.size();
+  155  
+  156      StringBuilder sb = new StringBuilder(n);
+  157      sb.append(ENVELOPE_P1);
+  158  
+  159      {
+  160        NameGenerator nameGenerator = new NameGenerator();
+  161        boolean first = true;
+  162        for (Token tok : pool.values()) {
+  163          String name = nameGenerator.next();
+  164          for (Token t = tok; t != null; t = t.prev) { t.name = name; }
+  165          if (first) { first = false; } else { sb.append(','); }
+  166          sb.append(name);
+  167        }
+  168      }
+  169  
+  170      sb.append(ENVELOPE_P2);
+  171      int afterReturn = sb.length();
+  172      int pos = 0, tokIndex = 0;
+  173      while (true) {
+  174        Token tok = tokIndex < nTokens ? dupes.get(tokIndex++) : null;
+  175        int limit = tok != null ? tok.start : n;
+  176        boolean inString = false;
+  177        for (int i = pos; i < limit; ++i) {
+  178          char ch = json.charAt(i);
+  179          if (inString) {
+  180            if (ch == '"') {
+  181              inString = false;
+  182            } else if (ch == '\\') {
+  183              ++i;
+  184            }
+  185          } else if (ch == '\t' || ch == '\n' || ch == '\r' || ch == ' ') {
+  186            if (pos != i) {
+  187              sb.append(json, pos, i);
+  188            }
+  189            pos = i + 1;
+  190          } else if (ch == '"') {
+  191            inString = true;
+  192          }
+  193        }
+  194        // There should be no token boundaries inside strings.
+  195        assert !inString;
+  196        if (pos != limit) {
+  197          sb.append(json, pos, limit);
+  198        }
+  199        if (tok == null) { break; }
+  200        sb.append(tok.name);
+  201        pos = tok.end;
+  202      }
+  203      {
+  204        // Insert space after return if required.
+  205        // This is unlikely to occur in practice.
+  206        char ch = sb.charAt(afterReturn);
+  207        if (ch != '{' && ch != '[' && ch != '"') {
+  208          sb.insert(afterReturn, ' ');
+  209        }
+  210      }
+  211      sb.append(ENVELOPE_P3);
+  212      {
+  213        boolean first = true;
+  214        for (Token tok : pool.values()) {
+  215          if (first) { first = false; } else { sb.append(','); }
+  216          sb.append(tok.seq, tok.start, tok.end);
+  217        }
+  218      }
+  219      sb.append(ENVELOPE_P4);

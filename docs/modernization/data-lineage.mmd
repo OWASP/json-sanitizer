@@ -1,0 +1,52 @@
+%% json-sanitizer: data lineage, domains to in-memory stores and caller I/O
+%% solid = write, dotted = read; label = number of methods
+graph LR
+  dom_api["D1 Public API"]
+  dom_buf["D8 Copy-on-write buffer"]
+  dom_cmt["D4 Comment & junk removal"]
+  dom_min["D9 EvalMinifier"]
+  dom_num["D7 Number normalization"]
+  dom_str["D5 String normalization"]
+  dom_struct["D3 Structure repair + depth limit"]
+  dom_test["D10 Tests & fuzzing"]
+  dom_tok["D2 Tokenizer / state machine"]
+  ds_RESERVED_KEYWORDS[("RESERVED_KEYWORDS (JS reserved-word table)")]
+  ds_UNBRACKETED_COMMA[("UNBRACKETED_COMMA (shared static exception)")]
+  ds_bracketStack[("bracketDepth + isMap (bracket stack)")]
+  ds_callerInput[("caller Reader / InputStream")]
+  ds_callerOutput[("caller Appendable / OutputStream")]
+  ds_jsonish[("jsonish (input text)")]
+  ds_maximumNestingDepth[("maximumNestingDepth")]
+  ds_sanitizedJson[("sanitizedJson + cleaned (output buffer)")]
+  ds_callerInput -.->|read 2| dom_api
+  dom_api ==>|write 2| ds_callerOutput
+  ds_jsonish -.->|read 2| dom_api
+  dom_api ==>|write 1| ds_jsonish
+  dom_api ==>|write 1| ds_maximumNestingDepth
+  ds_sanitizedJson -.->|read 3| dom_api
+  ds_jsonish -.->|read 1| dom_buf
+  ds_sanitizedJson -.->|read 2| dom_buf
+  dom_buf ==>|write 2| ds_sanitizedJson
+  ds_jsonish -.->|read 1| dom_cmt
+  ds_RESERVED_KEYWORDS -.->|read 1| dom_min
+  dom_min ==>|write 1| ds_RESERVED_KEYWORDS
+  ds_jsonish -.->|read 2| dom_num
+  ds_sanitizedJson -.->|read 2| dom_num
+  dom_num ==>|write 1| ds_sanitizedJson
+  ds_jsonish -.->|read 3| dom_str
+  ds_sanitizedJson -.->|read 2| dom_str
+  dom_str ==>|write 2| ds_sanitizedJson
+  ds_UNBRACKETED_COMMA -.->|read 1| dom_struct
+  dom_struct ==>|write 1| ds_UNBRACKETED_COMMA
+  ds_jsonish -.->|read 2| dom_struct
+  ds_maximumNestingDepth -.->|read 1| dom_struct
+  ds_sanitizedJson -.->|read 1| dom_struct
+  dom_struct ==>|write 1| ds_sanitizedJson
+  ds_RESERVED_KEYWORDS -.->|read 1| dom_test
+  ds_UNBRACKETED_COMMA -.->|read 2| dom_tok
+  ds_bracketStack -.->|read 2| dom_tok
+  dom_tok ==>|write 1| ds_bracketStack
+  ds_jsonish -.->|read 3| dom_tok
+  ds_maximumNestingDepth -.->|read 1| dom_tok
+  ds_sanitizedJson -.->|read 1| dom_tok
+  dom_tok ==>|write 1| ds_sanitizedJson

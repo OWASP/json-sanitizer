@@ -1,0 +1,38 @@
+NODE: JsonSanitizer.static-init
+ID: JsonSanitizer#static-init
+KIND: module
+DOMAIN: D3 Structure repair + depth limit
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1423-1432
+LINES: 16
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.UnbracketedComma (JsonSanitizer.UnbracketedComma)
+- read -> UNBRACKETED_COMMA (shared static exception) (ds:UNBRACKETED_COMMA)
+- write -> UNBRACKETED_COMMA (shared static exception) (ds:UNBRACKETED_COMMA)
+
+HEADER COMMENT:
+ 1403    /**
+ 1404     * An exception instance that can be thrown without the cost of unwinding the
+ 1405     * stack.
+ 1406     */
+ 1407    @SuppressWarnings("synthetic-access")
+
+SOURCE (all 3 static-initializer segments):
+  251    private static final Charset UTF_8 = Charset.forName("UTF-8");
+   ...
+ 1408    private static final UnbracketedComma UNBRACKETED_COMMA
+ 1409      = new UnbracketedComma();
+ 1410    static {
+ 1411      UNBRACKETED_COMMA.setStackTrace(new StackTraceElement[0]);
+ 1412    }
+   ...
+ 1423    private static final char[] HEX_DIGITS = new char[] {
+ 1424      '0', '1', '2', '3', '4', '5', '6', '7',
+ 1425      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+ 1426    };
+ 1427  
+ 1428    private static final int[] DIGITS_BY_BASE_THAT_FIT_IN_63B = {
+ 1429            -1,               -1, 63,               39, 31, 27, 24, 22,
+ 1430            21 /* base 8  */, 19, 18 /* base 10 */, 18, 17, 17, 16, 16,
+ 1431            15 /* base 16 */,
+ 1432    };
