@@ -1,0 +1,48 @@
+NODE: JsonSanitizer.requireValueState
+ID: JsonSanitizer#requireValueState
+KIND: module
+DOMAIN: D2 Tokenizer / state machine
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:819-849
+LINES: 31
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.insert (JsonSanitizer#insert)
+- read -> UNBRACKETED_COMMA (shared static exception) (ds:UNBRACKETED_COMMA)
+- read -> bracketDepth + isMap (bracket stack) (ds:bracketStack)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  819    private State requireValueState(int pos, State state, boolean canBeKey)
+  820      throws UnbracketedComma {
+  821      switch (state) {
+  822        case START_MAP: case BEFORE_KEY:
+  823          if (canBeKey) {
+  824            return State.AFTER_KEY;
+  825          } else {
+  826            insert(pos, "\"\":");
+  827            return State.AFTER_VALUE;
+  828          }
+  829        case AFTER_KEY:
+  830          insert(pos, ':');
+  831          return State.AFTER_VALUE;
+  832        case BEFORE_VALUE:
+  833          return State.AFTER_VALUE;
+  834        case AFTER_VALUE:
+  835          if (canBeKey) {
+  836            insert(pos, ',');
+  837            return State.AFTER_KEY;
+  838          } else {
+  839            insert(pos, ",\"\":");
+  840            return State.AFTER_VALUE;
+  841          }
+  842        case START_ARRAY: case BEFORE_ELEMENT:
+  843          return State.AFTER_ELEMENT;
+  844        case AFTER_ELEMENT:
+  845          if (bracketDepth == 0) { throw UNBRACKETED_COMMA; }
+  846          insert(pos, ',');
+  847          return State.AFTER_ELEMENT;
+  848      }
+  849      throw new AssertionError();

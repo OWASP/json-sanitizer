@@ -1,0 +1,22 @@
+NODE: EvalMinifier.regionMatches
+ID: EvalMinifier#regionMatches
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:279-286
+LINES: 8
+
+CONNECTIONS (from the dependency map):
+- call <- EvalMinifier.Token (EvalMinifier.Token)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  279    static boolean regionMatches(
+  280        CharSequence a, int as, int ae, CharSequence b, int bs, int be) {
+  281      int n = ae - as;
+  282      if (be - bs != n) { return false; }
+  283      for (int ai = as, bi = bs; ai < ae; ++ai, ++bi) {
+  284        if (a.charAt(ai) != b.charAt(bi)) { return false; }
+  285      }
+  286      return true;

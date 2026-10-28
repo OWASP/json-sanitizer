@@ -1,0 +1,147 @@
+NODE: JsonSanitizer.normalizeNumber
+ID: JsonSanitizer#normalizeNumber
+KIND: module
+DOMAIN: D7 Number normalization
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1010-1123
+LINES: 114
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.elide (JsonSanitizer#elide)
+- call -> JsonSanitizer.endOfDigitRun (JsonSanitizer#endOfDigitRun)
+- call -> JsonSanitizer.insert (JsonSanitizer#insert)
+- read -> jsonish (input text) (ds:jsonish)
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- write -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- JsonSanitizer.canonicalizeNumber (JsonSanitizer#canonicalizeNumber)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+  997    /**
+  998     * Ensures that the given run of characters is a valid JSON number.  This is
+  999     * less aggressive than {@link #canonicalizeNumber} since it can be called
+ 1000     * on inputs that are valid JSON so is on the fast path.
+ 1001     *
+ 1002     * JS numbers differ from JSON numbers in several ways:<ul>
+ 1003     * <li>They can have '+' as a sign prefix:  +1
+ 1004     * <li>They allow a 0x... hexadecimal form: 0xA4
+ 1005     * <li>They allow a 0... octal form:        012
+ 1006     * <li>The integer part can be empty:       .5
+ 1007     * <li>The fraction part can be empty:      1.
+ 1008     * </ul>
+ 1009     */
+
+SOURCE :
+ 1010    private void normalizeNumber(int start, int end) {
+ 1011      int pos = start;
+ 1012      // Sign
+ 1013      if (pos < end) {
+ 1014        switch (jsonish.charAt(pos)) {
+ 1015          case '+':
+ 1016            elide(pos, pos + 1);
+ 1017            ++pos;
+ 1018            break;
+ 1019          case '-':
+ 1020            ++pos;
+ 1021            break;
+ 1022          default:
+ 1023            break;
+ 1024        }
+ 1025      }
+ 1026  
+ 1027      // Integer part
+ 1028      int intEnd = endOfDigitRun(pos, end);
+ 1029      if (pos == intEnd) {  // No empty integer parts allowed in JSON.
+ 1030        insert(pos, '0');
+ 1031      } else if ('0' == jsonish.charAt(pos)) {
+ 1032        boolean reencoded = false;
+ 1033        int maxDigVal = 0; // The value of the max digit
+ 1034        int probableBase = 10; // The base suggested by the prefix
+ 1035        int firstDigitIndex = -1;
+ 1036        if (intEnd - pos == 1 && intEnd < end
+ 1037                && 'x' == (jsonish.charAt(intEnd) | 32)) {  // Recode hex.
+ 1038          probableBase = 16;
+ 1039          firstDigitIndex = intEnd + 1;
+ 1040          for (intEnd = intEnd + 1; intEnd < end; ++intEnd) {
+ 1041            char ch = jsonish.charAt(intEnd);
+ 1042            int digVal;
+ 1043            if ('0' <= ch && ch <= '9') {
+ 1044              digVal = ch - '0';
+ 1045            } else {
+ 1046              ch |= 32;
+ 1047              if ('a' <= ch && ch <= 'f') {
+ 1048                digVal = ch - ('a' - 10);
+ 1049              } else {
+ 1050                break;
+ 1051              }
+ 1052            }
+ 1053            maxDigVal = Math.max(digVal, maxDigVal);
+ 1054          }
+ 1055          reencoded = true;
+ 1056        } else if (intEnd - pos > 1) {  // Recode octal.
+ 1057          probableBase = 8;
+ 1058          firstDigitIndex = pos;
+ 1059          for (int i = pos; i < intEnd; ++i) {
+ 1060            int digVal = jsonish.charAt(i) - '0';
+ 1061            if (digVal < 0) {
+ 1062              break;
+ 1063            }
+ 1064            maxDigVal = Math.max(digVal, maxDigVal);
+ 1065          }
+ 1066          reencoded = true;
+ 1067        }
+ 1068        if (reencoded) {
+ 1069          // Avoid multiple signs.
+ 1070          // Putting out the underflowed value is the least bad option.
+ 1071          elide(pos, intEnd);
+ 1072  
+ 1073          String digits = jsonish.substring(firstDigitIndex, intEnd);
+ 1074  
+ 1075          int nDigits = digits.length();
+ 1076          int base = probableBase > maxDigVal ? probableBase : maxDigVal > 10 ? 16 : 10;
+ 1077          if (nDigits == 0) {
+ 1078            sanitizedJson.append('0');
+ 1079          } else if (DIGITS_BY_BASE_THAT_FIT_IN_63B[base] >= nDigits) {
+ 1080            long value = Long.parseLong(digits, base);
+ 1081            sanitizedJson.append(value);
+ 1082          } else {
+ 1083            // If there are lots of digits, we need to reencode using a BigInteger
+ 1084            BigInteger value = new BigInteger(digits, base);
+ 1085            sanitizedJson.append(value);
+ 1086          }
+ 1087        }
+ 1088      }
+ 1089      pos = intEnd;
+ 1090  
+ 1091      // Optional fraction.
+ 1092      if (pos < end && jsonish.charAt(pos) == '.') {
+ 1093        ++pos;
+ 1094        int fractionEnd = endOfDigitRun(pos, end);
+ 1095        if (fractionEnd == pos) {
+ 1096          insert(pos, '0');
+ 1097        }
+ 1098        // JS eval will discard digits after 24(?) but will not treat them as a
+ 1099        // syntax error, and JSON allows arbitrary length fractions.
+ 1100        pos = fractionEnd;
+ 1101      }
+ 1102  
+ 1103      // Optional exponent.
+ 1104      if (pos < end && 'e' == (jsonish.charAt(pos) | 32)) {
+ 1105        ++pos;
+ 1106        if (pos < end) {
+ 1107          switch (jsonish.charAt(pos)) {
+ 1108            // JSON allows explicit + in exponent but not for number as a whole.
+ 1109            case '+': case '-': ++pos; break;
+ 1110            default: break;
+ 1111          }
+ 1112        }
+ 1113        // JSON allows leading zeros on exponent part.
+ 1114        int expEnd = endOfDigitRun(pos, end);
+ 1115        if (expEnd == pos) {
+ 1116          insert(pos, '0');
+ 1117        }
+ 1118        pos = expEnd;
+ 1119      }
+ 1120      if (pos != end) {
+ 1121        elide(pos, end);
+ 1122      }
+ 1123    }

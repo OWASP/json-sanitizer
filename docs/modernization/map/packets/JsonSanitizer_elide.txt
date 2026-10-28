@@ -1,0 +1,29 @@
+NODE: JsonSanitizer.elide
+ID: JsonSanitizer#elide
+KIND: module
+DOMAIN: D8 Copy-on-write buffer
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:860-866
+LINES: 7
+
+CONNECTIONS (from the dependency map):
+- read -> jsonish (input text) (ds:jsonish)
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- write -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- JsonSanitizer.canonicalizeNumber (JsonSanitizer#canonicalizeNumber)
+- call <- JsonSanitizer.elideTrailingComma (JsonSanitizer#elideTrailingComma)
+- call <- JsonSanitizer.normalizeNumber (JsonSanitizer#normalizeNumber)
+- call <- JsonSanitizer.replace (JsonSanitizer#replace)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+- call <- JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  860    private void elide(int start, int end) {
+  861      if (sanitizedJson == null) {
+  862        sanitizedJson = new StringBuilder(jsonish.length() + 16);
+  863      }
+  864      sanitizedJson.append(jsonish, cleaned, start);
+  865      cleaned = end;
+  866    }

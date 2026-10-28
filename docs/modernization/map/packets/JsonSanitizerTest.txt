@@ -1,0 +1,171 @@
+NODE: JsonSanitizerTest
+ID: JsonSanitizerTest
+KIND: module
+DOMAIN: D10 Tests & fuzzing
+LOCATION: src/test/java/com/google/json/JsonSanitizerTest.java
+LINES: 415
+
+CONNECTIONS (from the dependency map):
+- call -> EvalMinifier.minify(String) (EvalMinifier#minify(String))
+- call -> JsonSanitizer.JsonSanitizer() (JsonSanitizer#JsonSanitizer())
+- call -> JsonSanitizer.getMaximumNestingDepth (JsonSanitizer#getMaximumNestingDepth)
+- call -> JsonSanitizer.sanitize(CharSequence) (JsonSanitizer#sanitize(CharSequence))
+- call -> JsonSanitizer.sanitize(InputStream) (JsonSanitizer#sanitize(InputStream))
+- call -> JsonSanitizer.sanitize(Reader) (JsonSanitizer#sanitize(Reader))
+- call -> JsonSanitizer.sanitize(String) (JsonSanitizer#sanitize(String))
+- dispatch <- Maven build + surefire (job:mvn-verify)
+
+HEADER COMMENT:
+(none)
+
+SOURCE (excerpt: first 150 of 443 lines):
+    1  // Copyright (C) 2012 Google Inc.
+    2  //
+    3  // Licensed under the Apache License, Version 2.0 (the "License");
+    4  // you may not use this file except in compliance with the License.
+    5  // You may obtain a copy of the License at
+    6  //
+    7  //      http://www.apache.org/licenses/LICENSE-2.0
+    8  //
+    9  // Unless required by applicable law or agreed to in writing, software
+   10  // distributed under the License is distributed on an "AS IS" BASIS,
+   11  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   12  // See the License for the specific language governing permissions and
+   13  // limitations under the License.
+   14  
+   15  package com.google.json;
+   16  
+   17  import static com.google.json.JsonSanitizer.DEFAULT_NESTING_DEPTH;
+   18  import static com.google.json.JsonSanitizer.sanitize;
+   19  
+   20  import java.io.ByteArrayInputStream;
+   21  import java.io.ByteArrayOutputStream;
+   22  import java.io.IOException;
+   23  import java.io.StringReader;
+   24  import java.util.Locale;
+   25  import junit.framework.TestCase;
+   26  import org.junit.Test;
+   27  
+   28  @SuppressWarnings("javadoc")
+   29  public final class JsonSanitizerTest extends TestCase {
+   30  
+   31    private static void assertSanitized(String golden, String input) {
+   32      assertSanitized(golden, input, DEFAULT_NESTING_DEPTH);
+   33    }
+   34  
+   35    private static void assertSanitized(String golden, String input, int maximumNestingDepth) {
+   36      String actual = sanitize(input, maximumNestingDepth);
+   37      assertEquals(input, golden, actual);
+   38      if (actual.equals(input)) {
+   39        assertSame(input, input, actual);
+   40      }
+   41    }
+   42  
+   43    private static void assertSanitized(String sanitary) {
+   44      assertSanitized(sanitary, sanitary);
+   45    }
+   46  
+   47    @Test
+   48    public static final void testSanitize() {
+   49      // On the left is the sanitized output, and on the right the input.
+   50      // If there is a single string, then the input is fine as-is.
+   51      assertSanitized("null", null);
+   52      assertSanitized("null", "");
+   53      assertSanitized("null");
+   54      assertSanitized("false");
+   55      assertSanitized("true");
+   56      assertSanitized(" false ");
+   57      assertSanitized("  false");
+   58      assertSanitized("false\n");
+   59      assertSanitized("false", "false,true");
+   60      assertSanitized("\"foo\"");
+   61      assertSanitized("\"foo\"", "'foo'");
+   62      assertSanitized(
+   63          "\"\\u003cscript>foo()\\u003c/script>\"", "\"<script>foo()</script>\"");
+   64      assertSanitized("\"\\u003c/SCRIPT\\n>\"", "\"</SCRIPT\n>\"");
+   65      assertSanitized("\"\\u003c/ScRIpT\"", "\"</ScRIpT\"");
+   66      // \u0130 is a Turkish dotted upper-case 'I' so the lower case version of
+   67      // the tag name is "script".
+   68      assertSanitized("\"\\u003c/ScR\u0130pT\"", "\"</ScR\u0130pT\"");
+   69      assertSanitized("\"<b>Hello</b>\"");
+   70      assertSanitized("\"<s>Hello</s>\"");
+   71      assertSanitized("\"<[[\\u005d]>\"", "'<[[]]>'");
+   72      assertSanitized("\"\\u005d]>\"", "']]>'");
+   73      assertSanitized("[[0]]", "[[0]]>");
+   74      assertSanitized("[1,-1,0.0,-0.5,1e2]", "[1,-1,0.0,-0.5,1e2,");
+   75      assertSanitized("[1,2,3]", "[1,2,3,]");
+   76      assertSanitized("[1,null,3]", "[1,,3,]");
+   77      assertSanitized("[1 ,2 ,3]", "[1 2 3]");
+   78      assertSanitized("{ \"foo\": \"bar\" }");
+   79      assertSanitized("{ \"foo\": \"bar\" }", "{ \"foo\": \"bar\", }");
+   80      assertSanitized("{\"foo\":\"bar\"}", "{\"foo\",\"bar\"}");
+   81      assertSanitized("{ \"foo\": \"bar\" }", "{ foo: \"bar\" }");
+   82      assertSanitized("{ \"foo\": \"bar\"}", "{ foo: 'bar");
+   83      assertSanitized("{ \"foo\": [\"bar\"]}", "{ foo: ['bar");
+   84      assertSanitized("false", "// comment\nfalse");
+   85      assertSanitized("false", "false// comment");
+   86      assertSanitized("false", "false// comment\n");
+   87      assertSanitized("false", "false/* comment */");
+   88      assertSanitized("false", "false/* comment *");
+   89      assertSanitized("false", "false/* comment ");
+   90      assertSanitized("false", "/*/true**/false");
+   91      assertSanitized("1");
+   92      assertSanitized("-1");
+   93      assertSanitized("1.0");
+   94      assertSanitized("-1.0");
+   95      assertSanitized("1.05");
+   96      assertSanitized("427.0953333");
+   97      assertSanitized("6.0221412927e+23");
+   98      assertSanitized("6.0221412927e23");
+   99      assertSanitized("6.0221412927e0", "6.0221412927e");
+  100      assertSanitized("6.0221412927e-0", "6.0221412927e-");
+  101      assertSanitized("6.0221412927e+0", "6.0221412927e+");
+  102      assertSanitized("1.660538920287695E-24");
+  103      assertSanitized("-6.02e-23");
+  104      assertSanitized("1.0", "1.");
+  105      assertSanitized("0.5", ".5");
+  106      assertSanitized("-0.5", "-.5");
+  107      assertSanitized("0.5", "+.5");
+  108      assertSanitized("0.5e2", "+.5e2");
+  109      assertSanitized("1.5e+2", "+1.5e+2");
+  110      assertSanitized("0.5e-2", "+.5e-2");
+  111      assertSanitized("{\"0\":0}", "{0:0}");
+  112      assertSanitized("{\"0\":0}", "{-0:0}");
+  113      assertSanitized("{\"0\":0}", "{+0:0}");
+  114      assertSanitized("{\"1\":0}", "{1.0:0}");
+  115      assertSanitized("{\"1\":0}", "{1.:0}");
+  116      assertSanitized("{\"0.5\":0}", "{.5:0}");
+  117      assertSanitized("{\"-0.5\":0}", "{-.5:0}");
+  118      assertSanitized("{\"0.5\":0}", "{+.5:0}");
+  119      assertSanitized("{\"50\":0}", "{+.5e2:0}");
+  120      assertSanitized("{\"150\":0}", "{+1.5e+2:0}");
+  121      assertSanitized("{\"0.1\":0}", "{+.1:0}");
+  122      assertSanitized("{\"0.01\":0}", "{+.01:0}");
+  123      assertSanitized("{\"0.005\":0}", "{+.5e-2:0}");
+  124      assertSanitized("{\"1e+101\":0}", "{10e100:0}");
+  125      assertSanitized("{\"1e-99\":0}", "{10e-100:0}");
+  126      assertSanitized("{\"1.05e-99\":0}", "{10.5e-100:0}");
+  127      assertSanitized("{\"1.05e-99\":0}", "{10.500e-100:0}");
+  128      assertSanitized("{\"1.234e+101\":0}", "{12.34e100:0}");
+  129      assertSanitized("{\"1.234e-102\":0}", "{.01234e-100:0}");
+  130      assertSanitized("{\"1.234e-102\":0}", "{.01234e-100:0}");
+  131      assertSanitized("{}");
+  132      // Remove grouping parentheses.
+  133      assertSanitized("{}", "({})");
+  134      // Escape code-points and isolated surrogates which are not XML embeddable.
+  135      assertSanitized("\"\\u0000\\u0008\\u001f\"", "'\u0000\u0008\u001f'");
+  136      assertSanitized("\"\ud800\udc00\\udc00\\ud800\"",
+  137                      "'\ud800\udc00\udc00\ud800'");
+  138      assertSanitized("\"\ufffd\\ufffe\\uffff\"", "'\ufffd\ufffe\uffff'");
+  139      // These control characters should be elided if they appear outside a string
+  140      // literal.
+  141      assertSanitized("42", "\uffef\u000042\u0008\ud800\uffff\udc00");
+  142      assertSanitized("null", "\uffef\u0000\u0008\ud800\uffff\udc00");
+  143      assertSanitized("[null]", "[,]");
+  144      assertSanitized("[null]", "[null,]");
+  145      assertSanitized("{\"a\":0,\"false\":\"x\",\"\":{\"\":-1}}",
+  146                      "{\"a\":0,false\"x\":{\"\":-1}}");
+  147      assertSanitized("[true ,false]", "[true false]");
+  148      assertSanitized("[\"\\u00a0\\u1234\"]");
+  149      assertSanitized("{\"a\\b\":\"c\"}", "{a\\b\"c");
+  150      assertSanitized("{\"a\":\"b\",\"c\":null}", "{\"a\":\"b\",\"c\":");

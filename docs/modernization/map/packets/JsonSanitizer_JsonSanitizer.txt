@@ -1,0 +1,31 @@
+NODE: JsonSanitizer.JsonSanitizer()
+ID: JsonSanitizer#JsonSanitizer()
+KIND: module
+DOMAIN: D1 Public API
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:318-328
+LINES: 11
+
+CONNECTIONS (from the dependency map):
+- write -> jsonish (input text) (ds:jsonish)
+- write -> maximumNestingDepth (ds:maximumNestingDepth)
+- call <- EvalMinifier.minify(String) (EvalMinifier#minify(String))
+- call <- JsonSanitizer.sanitize(CharSequence) (JsonSanitizer#sanitize(CharSequence))
+- call <- JsonSanitizer.sanitize(Reader) (JsonSanitizer#sanitize(Reader))
+- call <- JsonSanitizer.sanitize(String) (JsonSanitizer#sanitize(String))
+- call <- JsonSanitizerTest (JsonSanitizerTest)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  318    JsonSanitizer(String jsonish) {
+  319      this(jsonish, DEFAULT_NESTING_DEPTH);
+  320    }
+  321  
+  322    JsonSanitizer(String jsonish, int maximumNestingDepth) {
+  323      this.maximumNestingDepth = Math.min(Math.max(1, maximumNestingDepth),MAXIMUM_NESTING_DEPTH);
+  324      if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
+  325        System.err.println("\n" + jsonish + "\n========");
+  326      }
+  327      this.jsonish = jsonish != null ? jsonish : "null";
+  328    }

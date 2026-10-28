@@ -1,0 +1,171 @@
+NODE: JsonSanitizer.canonicalizeNumber
+ID: JsonSanitizer#canonicalizeNumber
+KIND: module
+DOMAIN: D7 Number normalization
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1130-1331
+LINES: 202
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.elide (JsonSanitizer#elide)
+- call -> JsonSanitizer.normalizeNumber (JsonSanitizer#normalizeNumber)
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+ 1125    /**
+ 1126     * Converts a run of characters that form a JS number to its canonical form
+ 1127     * which happens to also be a valid JSON number.
+ 1128     * @return true when the number could be canonicalized.
+ 1129     */
+
+SOURCE (excerpt: first 150 of 202 lines):
+ 1130    private boolean canonicalizeNumber(int start, int end) {
+ 1131      elide(start, start);
+ 1132      int sanStart = sanitizedJson.length();
+ 1133  
+ 1134      normalizeNumber(start, end);
+ 1135  
+ 1136      // Ensure that the number is on the output buffer.  Since this method is
+ 1137      // only called when we are quoting a number that appears where a property
+ 1138      // name is expected, we can force the sanitized form to contain it without
+ 1139      // affecting the fast-track for already valid inputs.
+ 1140      elide(end, end);
+ 1141      int sanEnd = sanitizedJson.length();
+ 1142  
+ 1143      return canonicalizeNumber(sanitizedJson, sanStart, sanEnd);
+ 1144    }
+ 1145  
+ 1146    /**
+ 1147     * @param sanStart the start (inclusive) of the number on sanitizedJson.
+ 1148     * @param sanEnd the end (exclusive) of the number on sanitizedJson.
+ 1149     * @return true when the number could be canonicalized.
+ 1150     */
+ 1151    private static boolean canonicalizeNumber(
+ 1152        StringBuilder sanitizedJson, int sanStart, int sanEnd) {
+ 1153      // Now we perform several steps.
+ 1154      // 1. Convert from scientific notation to regular or vice-versa based on
+ 1155      //    normalized exponent.
+ 1156      // 2. Remove trailing zeroes from the fraction and truncate it to 24 digits.
+ 1157      // 3. Elide the fraction entirely if it is ".0".
+ 1158      // 4. Convert any 'E' that separates the exponent to lower-case.
+ 1159      // 5. Elide any minus sign on a zero value.
+ 1160      // to convert the number to its canonical JS string form.
+ 1161  
+ 1162      // Figure out where the parts of the number start and end.
+ 1163      int intStart, intEnd, fractionStart, fractionEnd, expStart, expEnd;
+ 1164      intStart = sanStart + (sanitizedJson.charAt(sanStart) == '-' ? 1 : 0);
+ 1165      for (intEnd = intStart; intEnd < sanEnd; ++intEnd) {
+ 1166        char ch = sanitizedJson.charAt(intEnd);
+ 1167        if (!('0' <= ch && ch <= '9')) { break; }
+ 1168      }
+ 1169      if (intEnd == sanEnd || '.' != sanitizedJson.charAt(intEnd)) {
+ 1170        fractionStart = fractionEnd = intEnd;
+ 1171      } else {
+ 1172        fractionStart = intEnd + 1;
+ 1173        for (fractionEnd = fractionStart; fractionEnd < sanEnd; ++fractionEnd) {
+ 1174          char ch = sanitizedJson.charAt(fractionEnd);
+ 1175          if (!('0' <= ch && ch <= '9')) { break; }
+ 1176        }
+ 1177      }
+ 1178      if (fractionEnd == sanEnd) {
+ 1179        expStart = expEnd = sanEnd;
+ 1180      } else {
+ 1181        assert 'e' == (sanitizedJson.charAt(fractionEnd) | 32);
+ 1182        expStart = fractionEnd + 1;
+ 1183        if (sanitizedJson.charAt(expStart) == '+') { ++expStart; }
+ 1184        expEnd = sanEnd;
+ 1185      }
+ 1186  
+ 1187      assert
+ 1188           intStart      <= intEnd
+ 1189        && intEnd        <= fractionStart
+ 1190        && fractionStart <= fractionEnd
+ 1191        && fractionEnd   <= expStart
+ 1192        && expStart      <= expEnd;
+ 1193  
+ 1194      int exp;
+ 1195      if (expEnd == expStart) {
+ 1196        exp = 0;
+ 1197      } else {
+ 1198        try {
+ 1199          exp = Integer.parseInt(sanitizedJson.substring(expStart, expEnd), 10);
+ 1200        } catch (@SuppressWarnings("unused") NumberFormatException ex) {
+ 1201          // The exponent is out of the range of representable ints.
+ 1202          // JSON does not place limits on the range of representable numbers but
+ 1203          // nor does it allow bare numbers as keys.
+ 1204          return false;
+ 1205        }
+ 1206      }
+ 1207  
+ 1208      // Numbered Comments below come from the EcmaScript 5 language specification
+ 1209      // section 9.8.1 : ToString Applied to the Number Type
+ 1210      // http://es5.github.com/#x9.8.1
+ 1211  
+ 1212      // 5. let n, k, and s be integers such that k >= 1, 10k-1 <= s < 10k, the
+ 1213      // Number value for s * 10n-k is m, and k is as small as possible.
+ 1214      // Note that k is the number of digits in the decimal representation of s,
+ 1215      // that s is not divisible by 10, and that the least significant digit of s
+ 1216      // is not necessarily uniquely determined by these criteria.
+ 1217      int n = exp;  // Exponent
+ 1218  
+ 1219      // s, the string of decimal digits in the representation of m are stored in
+ 1220      // sanitizedJson.substring(intStart).
+ 1221      // k, the number of digits in s is computed later.
+ 1222  
+ 1223      // Leave only the number representation on the output buffer after intStart.
+ 1224      // This leaves any sign on the digit per
+ 1225      // 3. If m is less than zero, return the String concatenation of the
+ 1226      //    String "-" and ToString(-m).
+ 1227      boolean sawDecimal = false;
+ 1228      boolean zero = true;
+ 1229      int digitOutPos = intStart;
+ 1230      for (int i = intStart, nZeroesPending = 0; i < fractionEnd; ++i) {
+ 1231        char ch = sanitizedJson.charAt(i);
+ 1232        if (ch == '.') {
+ 1233          sawDecimal = true;
+ 1234          if (zero) { nZeroesPending = 0; }
+ 1235          continue;
+ 1236        }
+ 1237  
+ 1238        char digit = ch;
+ 1239        if ((!zero || digit != '0') && !sawDecimal) { ++n; }
+ 1240  
+ 1241        if (digit == '0') {
+ 1242          // Keep track of runs of zeros so that we can take them into account
+ 1243          // if we later see a non-zero digit.
+ 1244          ++nZeroesPending;
+ 1245        } else {
+ 1246          if (zero) {  // First non-zero digit.
+ 1247            // Discard runs of zeroes at the front of the integer part, but
+ 1248            // any after the decimal point factor into the exponent, n.
+ 1249            if (sawDecimal) {
+ 1250              n -= nZeroesPending;
+ 1251            }
+ 1252            nZeroesPending = 0;
+ 1253          }
+ 1254          zero = false;
+ 1255          while (nZeroesPending != 0 || digit != 0) {
+ 1256            char vdigit;
+ 1257            if (nZeroesPending == 0) {
+ 1258              vdigit = digit;
+ 1259              digit = (char) 0;
+ 1260            } else {
+ 1261              vdigit = '0';
+ 1262              --nZeroesPending;
+ 1263            }
+ 1264  
+ 1265            // TODO: limit s to 21 digits?
+ 1266            sanitizedJson.setCharAt(digitOutPos++, vdigit);
+ 1267          }
+ 1268        }
+ 1269      }
+ 1270      sanitizedJson.setLength(digitOutPos);
+ 1271      // Number of digits in decimal representation of s.
+ 1272      int k = digitOutPos - intStart;
+ 1273  
+ 1274      // Now we have computed n, k, and s as defined above.  Time to add decimal
+ 1275      // points, exponents, and leading zeroes per the rest of the JS number
+ 1276      // formatting specification.
+ 1277  
+ 1278      if (zero) {  // There are no non-zero decimal digits.
+ 1279        // 2. If m is +0 or -0, return the String "0".

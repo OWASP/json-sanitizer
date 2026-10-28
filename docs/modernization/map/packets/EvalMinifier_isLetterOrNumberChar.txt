@@ -1,0 +1,19 @@
+NODE: EvalMinifier.isLetterOrNumberChar
+ID: EvalMinifier#isLetterOrNumberChar
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:234-238
+LINES: 5
+
+CONNECTIONS (from the dependency map):
+- call <- EvalMinifier.minify(CharSequence) (EvalMinifier#minify(CharSequence))
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  234    private static boolean isLetterOrNumberChar(char ch) {
+  235      if ('0' <= ch && ch <= '9') { return true; }
+  236      char lch = (char) (ch | 32);
+  237      if ('a' <= lch && lch <= 'z') { return true; }
+  238      return ch == '_' || ch == '$' || ch == '-' || ch == '.';

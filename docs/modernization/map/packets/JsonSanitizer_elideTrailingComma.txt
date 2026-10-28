@@ -1,0 +1,46 @@
+NODE: JsonSanitizer.elideTrailingComma
+ID: JsonSanitizer#elideTrailingComma
+KIND: module
+DOMAIN: D3 Structure repair + depth limit
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:966-993
+LINES: 28
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.elide (JsonSanitizer#elide)
+- read -> jsonish (input text) (ds:jsonish)
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- write -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  966    private void elideTrailingComma(int closeBracketPos) {
+  967      // The content before closeBracketPos is stored in two places.
+  968      // 1. sanitizedJson
+  969      // 2. jsonish.substring(cleaned, closeBracketPos)
+  970      // We walk over whitespace characters in both right-to-left looking for a
+  971      // comma.
+  972      for (int i = closeBracketPos; --i >= cleaned;) {
+  973        switch (jsonish.charAt(i)) {
+  974          case '\t': case '\n': case '\r': case ' ':
+  975            continue;
+  976          case ',':
+  977            elide(i, i+1);
+  978            return;
+  979          default: throw new AssertionError("" + jsonish.charAt(i));
+  980        }
+  981      }
+  982      assert sanitizedJson != null;
+  983      for (int i = sanitizedJson.length(); --i >= 0;) {
+  984        switch (sanitizedJson.charAt(i)) {
+  985          case '\t': case '\n': case '\r': case ' ':
+  986            continue;
+  987          case ',':
+  988            sanitizedJson.setLength(i);
+  989            return;
+  990          default: throw new AssertionError("" + sanitizedJson.charAt(i));
+  991        }
+  992      }
+  993      throw new AssertionError(

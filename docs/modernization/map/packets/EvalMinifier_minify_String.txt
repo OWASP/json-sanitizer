@@ -1,0 +1,51 @@
+NODE: EvalMinifier.minify(String)
+ID: EvalMinifier#minify(String)
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:50-66
+LINES: 17
+FLAGS: entry point (public API or deployment/build config)
+
+CONNECTIONS (from the dependency map):
+- call -> EvalMinifier.minify(CharSequence) (EvalMinifier#minify(CharSequence))
+- call -> JsonSanitizer.JsonSanitizer() (JsonSanitizer#JsonSanitizer())
+- call -> JsonSanitizer.sanitize() (JsonSanitizer#sanitize())
+- call -> JsonSanitizer.toCharSequence (JsonSanitizer#toCharSequence)
+- call <- EvalMinifierTest (EvalMinifierTest)
+- call <- JsonSanitizerTest (JsonSanitizerTest)
+
+HEADER COMMENT:
+   35    /**
+   36     * Renders JSON-like content safe for use with Javascript {@code eval}.
+   37     *
+   38     * <p>The output is a Javascript expression, not a statement, so if it
+   39     * contains an object (<code>{</code><i>properties</i><code>}</code>) then it
+   40     * still needs to be wrapped in parentheses before being passed to
+   41     * {@code eval} as via {@code eval('(' + s + ')')} or {@code eval('0,' + s)}.
+   42     *
+   43     * @param jsonish a string of JSON-like content as defined by
+   44     *   {@link JsonSanitizer}.
+   45     * @return a valid Javascript expression that has no free variables and whose
+   46     *   execution will have no side-effects, and which can be embedded safely in
+   47     *   an HTML {@code <script></script>} element or inside an XML
+   48     *   {@code <![CDATA[...]]>} section.
+   49     */
+
+SOURCE :
+   50    public static String minify(String jsonish) {
+   51      JsonSanitizer s = new JsonSanitizer(jsonish);
+   52      s.sanitize();
+   53      return minify(s.toCharSequence()).toString();
+   54    }
+   55  
+   56    /**
+   57     * Same as {@link EvalMinifier#minify(String)}, but allows to set custom maximum nesting depth.
+   58     * @param jsonish a string of JSON-like content as defined by
+   59     * {@link JsonSanitizer}.
+   60     * @param maximumNestingDepth the maximum nesting depth for the {@link JsonSanitizer}
+   61     * @return see {@link EvalMinifier#minify(String)}
+   62     */
+   63    public static String minify(String jsonish, int maximumNestingDepth) {
+   64      JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
+   65      s.sanitize();
+   66      return minify(s.toCharSequence()).toString();

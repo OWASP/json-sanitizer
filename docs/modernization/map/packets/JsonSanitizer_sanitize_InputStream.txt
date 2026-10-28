@@ -1,0 +1,51 @@
+NODE: JsonSanitizer.sanitize(InputStream)
+ID: JsonSanitizer#sanitize(InputStream)
+KIND: module
+DOMAIN: D1 Public API
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:229-249
+LINES: 21
+FLAGS: entry point (public API or deployment/build config)
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.sanitize(Reader) (JsonSanitizer#sanitize(Reader))
+- read -> caller Reader / InputStream (ds:callerInput)
+- write -> caller Appendable / OutputStream (ds:callerOutput)
+- call <- JsonSanitizerTest (JsonSanitizerTest)
+
+HEADER COMMENT:
+  216    /**
+  217     * Reads UTF-8 encoded JSON-like content from {@code in} and writes UTF-8
+  218     * encoded embeddable JSON to {@code out}.
+  219     * Malformed UTF-8 is decoded as U+FFFD.
+  220     * <p>
+  221     * The whole input is read into memory before sanitizing, so callers handling
+  222     * untrusted input should limit its size.  Neither {@code in} nor {@code out}
+  223     * is closed, but {@code out} is flushed.
+  224     *
+  225     * @param in UTF-8 encoded JSON-like content.
+  226     * @param out receives UTF-8 encoded embeddable JSON.
+  227     * @throws IOException if reading {@code in} or writing {@code out} fails.
+  228     */
+
+SOURCE :
+  229    public static void sanitize(InputStream in, OutputStream out)
+  230        throws IOException {
+  231      sanitize(in, out, DEFAULT_NESTING_DEPTH);
+  232    }
+  233  
+  234    /**
+  235     * Same as {@link JsonSanitizer#sanitize(InputStream, OutputStream)}, but
+  236     * allows to set a custom maximum nesting depth.
+  237     *
+  238     * @param in UTF-8 encoded JSON-like content.
+  239     * @param out receives UTF-8 encoded embeddable JSON.
+  240     * @param maximumNestingDepth maximum nesting depth.
+  241     * @throws IOException if reading {@code in} or writing {@code out} fails.
+  242     */
+  243    public static void sanitize(
+  244        InputStream in, OutputStream out, int maximumNestingDepth)
+  245        throws IOException {
+  246      Writer w = new OutputStreamWriter(out, UTF_8);
+  247      sanitize(new InputStreamReader(in, UTF_8), w, maximumNestingDepth);
+  248      w.flush();
+  249    }

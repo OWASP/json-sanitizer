@@ -1,0 +1,187 @@
+NODE: JsonSanitizer.sanitize()
+ID: JsonSanitizer#sanitize()
+KIND: module
+DOMAIN: D2 Tokenizer / state machine
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:334-602
+LINES: 269
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.canonicalizeNumber (JsonSanitizer#canonicalizeNumber)
+- call -> JsonSanitizer.elide (JsonSanitizer#elide)
+- call -> JsonSanitizer.elideTrailingComma (JsonSanitizer#elideTrailingComma)
+- call -> JsonSanitizer.endOfBracketedValue (JsonSanitizer#endOfBracketedValue)
+- call -> JsonSanitizer.endOfComment (JsonSanitizer#endOfComment)
+- call -> JsonSanitizer.endOfQuotedString (JsonSanitizer#endOfQuotedString)
+- call -> JsonSanitizer.insert (JsonSanitizer#insert)
+- call -> JsonSanitizer.isJsonSpecialChar (JsonSanitizer#isJsonSpecialChar)
+- call -> JsonSanitizer.isKeyword (JsonSanitizer#isKeyword)
+- call -> JsonSanitizer.normalizeNumber (JsonSanitizer#normalizeNumber)
+- call -> JsonSanitizer.replace (JsonSanitizer#replace)
+- call -> JsonSanitizer.requireValueState (JsonSanitizer#requireValueState)
+- call -> JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+- read -> UNBRACKETED_COMMA (shared static exception) (ds:UNBRACKETED_COMMA)
+- read -> bracketDepth + isMap (bracket stack) (ds:bracketStack)
+- write -> bracketDepth + isMap (bracket stack) (ds:bracketStack)
+- read -> jsonish (input text) (ds:jsonish)
+- read -> maximumNestingDepth (ds:maximumNestingDepth)
+- read -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- write -> sanitizedJson + cleaned (output buffer) (ds:sanitizedJson)
+- call <- EvalMinifier.minify(String) (EvalMinifier#minify(String))
+- call <- JsonSanitizer.sanitize(CharSequence) (JsonSanitizer#sanitize(CharSequence))
+- call <- JsonSanitizer.sanitize(Reader) (JsonSanitizer#sanitize(Reader))
+- call <- JsonSanitizer.sanitize(String) (JsonSanitizer#sanitize(String))
+
+HEADER COMMENT:
+(none)
+
+SOURCE (excerpt: first 150 of 269 lines):
+  334    void sanitize() {
+  335      // Return to consistent state.
+  336      bracketDepth = cleaned = 0;
+  337      sanitizedJson = null;
+  338  
+  339      State state = State.START_ARRAY;
+  340      int n = jsonish.length();
+  341  
+  342      // Walk over each token and either validate it, by just advancing i and
+  343      // computing the next state, or manipulate cleaned&sanitizedJson so that
+  344      // sanitizedJson contains the sanitized equivalent of
+  345      // jsonish.substring(0, cleaned).
+  346      token_loop:
+  347      for (int i = 0; i < n; ++i) {
+  348        try {
+  349          char ch = jsonish.charAt(i);
+  350          if (SUPER_VERBOSE_AND_SLOW_LOGGING) {
+  351            String sanitizedJsonStr =
+  352              (sanitizedJson == null ? "" : sanitizedJson)
+  353              + jsonish.substring(cleaned, i);
+  354            System.err.println("i=" + i + ", ch=" + ch + ", state=" + state
+  355                               + ", sanitized=" + sanitizedJsonStr);
+  356          }
+  357          switch (ch) {
+  358            case '\t': case '\n': case '\r': case ' ':
+  359              break;
+  360  
+  361            case '"': case '\'':
+  362              state = requireValueState(i, state, true);
+  363              int strEnd = endOfQuotedString(jsonish, i);
+  364              sanitizeString(i, strEnd);
+  365              i = strEnd - 1;
+  366              break;
+  367  
+  368            case '(': case ')':
+  369              // Often JSON-like content which is meant for use by eval is
+  370              // wrapped in parentheses so that the JS parser treats contained
+  371              // curly brackets as part of an object constructor instead of a
+  372              // block statement.
+  373              // We elide these grouping parentheses to ensure valid JSON.
+  374              elide(i, i + 1);
+  375              break;
+  376  
+  377            case '{': case '[':
+  378              state = requireValueState(i, state, false);
+  379              if (isMap == null) {
+  380                isMap = new boolean[maximumNestingDepth];
+  381              }
+  382              if (bracketDepth >= maximumNestingDepth) {
+  383                // Too deep.  Replace the whole array or object with null
+  384                // instead of failing, so hostile input cannot cause an
+  385                // exception, and resume after its close bracket.
+  386                int valueEnd = endOfBracketedValue(i);
+  387                replace(i, valueEnd, "null");
+  388                i = valueEnd - 1;
+  389                break;
+  390              }
+  391              boolean map = ch == '{';
+  392              isMap[bracketDepth] = map;
+  393              ++bracketDepth;
+  394              state = map ? State.START_MAP : State.START_ARRAY;
+  395              break;
+  396  
+  397            case '}': case ']':
+  398              if (bracketDepth == 0) {
+  399                elide(i, jsonish.length());
+  400                break token_loop;
+  401              }
+  402  
+  403              // Strip trailing comma to convert {"a":0,} -> {"a":0}
+  404              // and [1,2,3,] -> [1,2,3,]
+  405              switch (state) {
+  406                case BEFORE_VALUE:
+  407                  insert(i, "null");
+  408                  break;
+  409                case BEFORE_ELEMENT: case BEFORE_KEY:
+  410                  elideTrailingComma(i);
+  411                  break;
+  412                case AFTER_KEY:
+  413                  insert(i, ":null");
+  414                  break;
+  415                case START_MAP: case START_ARRAY:
+  416                case AFTER_ELEMENT: case AFTER_VALUE: break;
+  417              }
+  418  
+  419              --bracketDepth;
+  420              char closeBracket = isMap[bracketDepth] ? '}' : ']';
+  421              if (ch != closeBracket) {
+  422                replace(i, i + 1, closeBracket);
+  423              }
+  424              state = bracketDepth == 0 || !isMap[bracketDepth - 1]
+  425                  ? State.AFTER_ELEMENT : State.AFTER_VALUE;
+  426              break;
+  427            case ',':
+  428              if (bracketDepth == 0) { throw UNBRACKETED_COMMA; }
+  429              // Convert comma elisions like [1,,3] to [1,null,3].
+  430              // [1,,3] in JS is an array that has no element at index 1
+  431              // according to the "in" operator so accessing index 1 will
+  432              // yield the special value "undefined" which is equivalent to
+  433              // JS's "null" value according to "==".
+  434              switch (state) {
+  435                // Normal
+  436                case AFTER_ELEMENT:
+  437                  state = State.BEFORE_ELEMENT;
+  438                  break;
+  439                case AFTER_VALUE:
+  440                  state = State.BEFORE_KEY;
+  441                  break;
+  442                // Array elision.
+  443                case START_ARRAY: case BEFORE_ELEMENT:
+  444                  insert(i, "null");
+  445                  state = State.BEFORE_ELEMENT;
+  446                  break;
+  447                // Ignore
+  448                case START_MAP: case BEFORE_KEY:
+  449                case AFTER_KEY:
+  450                  elide(i, i + 1);
+  451                  break;
+  452                // Supply missing value.
+  453                case BEFORE_VALUE:
+  454                  insert(i, "null");
+  455                  state = State.BEFORE_KEY;
+  456                  break;
+  457              }
+  458              break;
+  459  
+  460            case ':':
+  461              if (state == State.AFTER_KEY) {
+  462                state = State.BEFORE_VALUE;
+  463              } else {
+  464                elide(i, i + 1);
+  465              }
+  466              break;
+  467  
+  468            case '/':
+  469              // Skip over JS-style comments since people like inserting them into
+  470              // data files and getting huffy with Crockford when he says no to
+  471              // versioning JSON to allow ignorable tokens.
+  472              int end = endOfComment(i);
+  473              elide(i, end);
+  474              i = end - 1;
+  475              break;
+  476  
+  477            default:
+  478              // Three kinds of other values can occur.
+  479              // 1. Numbers
+  480              // 2. Keyword values ("false", "null", "true")
+  481              // 3. Unquoted JS property names as in the JS expression
+  482              //      ({ foo: "bar"})
+  483              //    which is equivalent to the JSON

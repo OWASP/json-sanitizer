@@ -1,0 +1,35 @@
+{
+  "system": "json-sanitizer",
+  "version": 1,
+  "reviews": {
+    "RULE-001": {
+      "verdict": "confirmed",
+      "at": "2026-10-27T08:48:55+00:00",
+      "title": "Escape-aware forward decoding for embedding look-ahead",
+      "note": "Look-ahead logic is right. The \\v mapping is a defect to FIX in the rewrite: \\v must become \\u000b (U+000B, vertical tab), and the decoder must return 0x2000B, not \\u0008 / 0x20008 (JsonSanitizer.java:740, :1495). Legacy is left unpatched, so equivalence tests must expect this one difference."
+    },
+    "RULE-024": {
+      "verdict": "confirmed",
+      "at": "2026-10-27T08:48:55+00:00",
+      "title": "Over-deep arrays/objects are replaced with null instead of failing",
+      "note": "Confirmed with the outside reviewer. The no-throw policy is new: 042752c (PR #39, 2026-10-27) reverted the short-lived JsonNestingDepthException from 0c90410 (PR #37) before any release, so earlier published releases behave differently."
+    },
+    "RULE-025": {
+      "verdict": "confirmed",
+      "at": "2026-10-27T08:46:41+00:00",
+      "title": "Output is exactly one top-level value; trailing extra content is discarded"
+    },
+    "RULE-026": {
+      "verdict": "confirmed",
+      "at": "2026-10-27T08:46:41+00:00",
+      "title": "Sanitizer output must be idempotent (sanitizing twice changes nothing)",
+      "note": "The rule is right. The test-diagnostic bugs (:89 excerpts sanitized0 instead of sanitized1; excerpt() double-escapes \\r/\\n; ellipse flags unused) don't affect pass/fail and are not part of the contract."
+    },
+    "RULE-057": {
+      "verdict": "confirmed",
+      "at": "2026-10-27T08:48:55+00:00",
+      "title": "Neutralize HTML script and XML CDATA breakout sequences in strings",
+      "note": "Confirmed with the outside reviewer. '<![CDATA[' is not escaped by the code; JsonSanitizerTest.java:343 asserts its absence only for the fuzz inputs it uses. Out of scope, not a security gap."
+    }
+  }
+}

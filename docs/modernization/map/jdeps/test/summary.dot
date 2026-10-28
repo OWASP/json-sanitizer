@@ -1,0 +1,12 @@
+digraph "summary" {
+  "com.google.json"                                  -> "com.google.json (classes)";
+  "com.google.json"                                  -> "com.google.json (test-classes)";
+  "com.google.json"                                  -> "java.io (java.base)";
+  "com.google.json"                                  -> "java.lang (java.base)";
+  "com.google.json"                                  -> "java.lang.invoke (java.base)";
+  "com.google.json"                                  -> "java.math (java.base)";
+  "com.google.json"                                  -> "java.util (java.base)";
+  "com.google.json"                                  -> "javax.annotation (not found)";
+  "com.google.json"                                  -> "junit.framework (not found)";
+  "com.google.json"                                  -> "org.junit (not found)";
+}

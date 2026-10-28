@@ -1,0 +1,43 @@
+NODE: JsonSanitizer.unescapedCharRev
+ID: JsonSanitizer#unescapedCharRev
+KIND: module
+DOMAIN: D6 Embedding-safety escapes
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1504-1531
+LINES: 28
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.unescapedChar (JsonSanitizer#unescapedChar)
+- call <- JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+ 1504    private static int unescapedCharRev(String s, int rightIncl) {
+ 1505      if (rightIncl < 0) {
+ 1506        return 0;
+ 1507      }
+ 1508      // \?
+ 1509      // \01
+ 1510      // \012
+ 1511      // \x00
+ 1512      // \u0000
+ 1513      for (int i = 1; i < 6; ++i) {
+ 1514        int left = rightIncl - i;
+ 1515        if (left < 0) { break; }
+ 1516        if (s.charAt(left) == '\\') {
+ 1517          // If there are an odd number of '\\' then decode.
+ 1518          int n = 1;
+ 1519          while (left - n >= 0 && s.charAt(left - n) == '\\') {
+ 1520            ++n;
+ 1521          }
+ 1522          if ((n & 1) == 1) {
+ 1523            int unescaped = unescapedChar(s, left);
+ 1524            if ((unescaped >>> 16) - 1 == i) {
+ 1525              return unescaped;
+ 1526            }
+ 1527          }
+ 1528          break;
+ 1529        }
+ 1530      }
+ 1531      return 0x10000 | s.charAt(rightIncl);

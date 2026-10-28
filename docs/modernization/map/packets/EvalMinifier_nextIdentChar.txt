@@ -1,0 +1,24 @@
+NODE: EvalMinifier.nextIdentChar
+ID: EvalMinifier#nextIdentChar
+KIND: module
+DOMAIN: D9 EvalMinifier
+LOCATION: src/main/java/com/google/json/EvalMinifier.java:335-344
+LINES: 10
+
+CONNECTIONS (from the dependency map):
+- call <- EvalMinifier.NameGenerator (EvalMinifier.NameGenerator)
+
+HEADER COMMENT:
+(none)
+
+SOURCE :
+  335    static int nextIdentChar(char ch, boolean allowDigits) {
+  336      if (ch == 'z') { return 'A'; }
+  337      if (ch == 'Z') { return '_'; }
+  338      if (ch == '_') { return '$'; }
+  339      if (ch == '$') {
+  340        if (allowDigits) { return '0'; }
+  341        return -1;
+  342      }
+  343      if (ch == '9') { return -1; }
+  344      return (char) (ch + 1);

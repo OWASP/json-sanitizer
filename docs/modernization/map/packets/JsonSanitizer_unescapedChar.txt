@@ -1,0 +1,84 @@
+NODE: JsonSanitizer.unescapedChar
+ID: JsonSanitizer#unescapedChar
+KIND: module
+DOMAIN: D6 Embedding-safety escapes
+LOCATION: src/main/java/com/google/json/JsonSanitizer.java:1439-1500
+LINES: 62
+
+CONNECTIONS (from the dependency map):
+- call -> JsonSanitizer.hexVal (JsonSanitizer#hexVal)
+- call -> JsonSanitizer.isHex (JsonSanitizer#isHex)
+- call -> JsonSanitizer.isOct (JsonSanitizer#isOct)
+- call <- JsonSanitizer.sanitizeString (JsonSanitizer#sanitizeString)
+- call <- JsonSanitizer.unescapedCharRev (JsonSanitizer#unescapedCharRev)
+
+HEADER COMMENT:
+ 1434    /**
+ 1435     * Looks for a literal character or escape sequence at left in s.
+ 1436     * Packs the char into the lowest 16 bytes of the output and the
+ 1437     * count of characters in the sequence in the remaining bits
+ 1438     */
+
+SOURCE :
+ 1439    private static int unescapedChar(String s, int left) {
+ 1440      int n = s.length();
+ 1441      if (left >= n) {
+ 1442        return 0;
+ 1443      }
+ 1444      char c = s.charAt(left);
+ 1445      if (c == '\\') {
+ 1446        if (left + 1 == n) {
+ 1447          return 0x10000;
+ 1448        }
+ 1449        char nc = s.charAt(left + 1);
+ 1450        switch (nc) {
+ 1451          case '0': case '1': case '2': case '3':
+ 1452          case '4': case '5': case '6': case '7': {
+ 1453            int octalStart = left + 1;
+ 1454            int octalEnd = octalStart;
+ 1455            ++octalEnd;
+ 1456            if (octalEnd < n && isOct(s.charAt(octalEnd))) {
+ 1457              ++octalEnd;
+ 1458              if (nc <= '3' && octalEnd < n && isOct(s.charAt(octalEnd))) {
+ 1459                ++octalEnd;
+ 1460              }
+ 1461            }
+ 1462            int value = 0;
+ 1463            for (int j = octalStart; j < octalEnd; ++j) {
+ 1464              char digit = s.charAt(j);
+ 1465              value = (value << 3) | (digit - '0');
+ 1466            }
+ 1467            return ((octalEnd - left) << 16) | value;
+ 1468          }
+ 1469          case 'x':
+ 1470            if (left + 3 < n) {
+ 1471              char d0 = s.charAt(left + 2);
+ 1472              char d1 = s.charAt(left + 3);
+ 1473              if (isHex(d0) && isHex(d1)) {
+ 1474                return 0x40000 | (hexVal(d0) << 4) | hexVal(d1);
+ 1475              }
+ 1476            }
+ 1477            break;
+ 1478          case 'u':
+ 1479            if (left + 5 < n) {
+ 1480              char d0 = s.charAt(left + 2);
+ 1481              char d1 = s.charAt(left + 3);
+ 1482              char d2 = s.charAt(left + 4);
+ 1483              char d3 = s.charAt(left + 5);
+ 1484              if (isHex(d0) && isHex(d1) && isHex(d2) && isHex(d3)) {
+ 1485                return 0x60000 |
+ 1486                        (hexVal(d0) << 12) | (hexVal(d1) << 8) | (hexVal(d2) << 4) | hexVal(d3);
+ 1487              }
+ 1488            }
+ 1489            break;
+ 1490          case 'b': return (0x20000 | '\b');
+ 1491          case 'f': return (0x20000 | '\f');
+ 1492          case 'n': return 0x2000A;
+ 1493          case 'r': return 0x2000D;
+ 1494          case 't': return 0x20009;
+ 1495          case 'v': return 0x20008;
+ 1496          default: break;
+ 1497        }
+ 1498        return (0x20000) | nc;
+ 1499      } else {
+ 1500        return 0x10000 | c;
