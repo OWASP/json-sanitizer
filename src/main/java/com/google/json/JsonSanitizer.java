@@ -115,6 +115,15 @@ public final class JsonSanitizer {
   public static final int MAXIMUM_NESTING_DEPTH = 4096;
 
   /**
+   * The default for the maximumInputLength parameter of the Reader and
+   * InputStream overloads: 4 Mi chars (4,194,304).  Output can be six times
+   * as long as the input, so the worst case at this limit (every char
+   * escaped) needs a heap of about 128 MB on Java 21 and 192 MB on Java 8,
+   * whose strings are always UTF-16: roughly 30 to 45 bytes per input char.
+   */
+  public static final int DEFAULT_MAXIMUM_INPUT_LENGTH = 1 << 22;
+
+  /**
    * Given JSON-like content, produces a string of JSON that is safe to embed,
    * safe to pass to JavaScript's {@code eval} operator.
    *
@@ -148,10 +157,10 @@ public final class JsonSanitizer {
    * later changes to {@code jsonish} do not affect the result.
    *
    * @param jsonish JSON-like content.
-   * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
-   *     it is returned unchanged.
+   * @return embeddable JSON, always as an immutable {@code String}, never
+   *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
-  public static CharSequence sanitize(CharSequence jsonish) {
+  public static String sanitize(CharSequence jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
@@ -161,10 +170,10 @@ public final class JsonSanitizer {
    *
    * @param jsonish JSON-like content.
    * @param maximumNestingDepth maximum nesting depth.
-   * @return embeddable JSON.  If {@code jsonish} is already embeddable JSON,
-   *     it is returned unchanged.
+   * @return embeddable JSON, always as an immutable {@code String}, never
+   *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
-  public static CharSequence sanitize(
+  public static String sanitize(
       CharSequence jsonish, int maximumNestingDepth) {
     if (jsonish == null) {
       return sanitize((String) null, maximumNestingDepth);
@@ -172,20 +181,25 @@ public final class JsonSanitizer {
     JsonSanitizer s = new JsonSanitizer(
         jsonish.toString(), maximumNestingDepth);
     s.sanitize();
-    return s.sanitizedJson != null ? s.sanitizedJson : jsonish;
+    // Never the caller's object: a mutable one could change after it was
+    // checked (SEC-002).
+    return s.toString();
   }
 
   /**
    * Reads JSON-like content from {@code in} and writes embeddable JSON to
    * {@code out}.
    * <p>
-   * The whole input is read into memory before sanitizing, so callers handling
-   * untrusted input should limit its size.  Neither {@code in} nor {@code out}
-   * is closed.
+   * The whole input is read into memory before sanitizing, and output can be
+   * up to six times as long, so input longer than
+   * {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars is rejected with an
+   * {@code IOException}; the overload with a {@code maximumInputLength} changes
+   * that limit.  Neither {@code in} nor {@code out} is closed.
    *
    * @param in JSON-like content.
    * @param out receives embeddable JSON.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} holds more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars.
    */
   public static void sanitize(Reader in, Appendable out) throws IOException {
     sanitize(in, out, DEFAULT_NESTING_DEPTH);
@@ -198,19 +212,58 @@ public final class JsonSanitizer {
    * @param in JSON-like content.
    * @param out receives embeddable JSON.
    * @param maximumNestingDepth maximum nesting depth.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} holds more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars.
    */
   public static void sanitize(
       Reader in, Appendable out, int maximumNestingDepth) throws IOException {
-    StringBuilder jsonish = new StringBuilder();
+    sanitize(in, out, maximumNestingDepth, DEFAULT_MAXIMUM_INPUT_LENGTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(Reader, Appendable, int)}, but
+   * allows to set the maximum input length.
+   *
+   * @param in JSON-like content.
+   * @param out receives embeddable JSON.
+   * @param maximumNestingDepth maximum nesting depth.
+   * @param maximumInputLength the most chars read from {@code in}; at least 0.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} holds more than {@code maximumInputLength} chars, in which
+   *     case nothing is written to {@code out}.
+   * @throws IllegalArgumentException if {@code maximumInputLength} is negative.
+   */
+  public static void sanitize(
+      Reader in, Appendable out, int maximumNestingDepth,
+      int maximumInputLength)
+      throws IOException {
+    if (maximumInputLength < 0) {
+      throw new IllegalArgumentException(
+          "maximumInputLength " + maximumInputLength);
+    }
+    StringBuilder buffered = new StringBuilder();
     char[] buf = new char[8192];
     for (int n; (n = in.read(buf)) >= 0;) {
-      jsonish.append(buf, 0, n);
+      // Fail before buffering more than allowed, so endless input cannot
+      // exhaust the heap (SEC-003).
+      if (n > maximumInputLength - buffered.length()) {
+        throw new IOException(
+            "JSON-like input is longer than " + maximumInputLength + " chars");
+      }
+      buffered.append(buf, 0, n);
     }
-    JsonSanitizer s = new JsonSanitizer(
-        jsonish.toString(), maximumNestingDepth);
+    String jsonish = buffered.toString();
+    // Release the read buffer before sanitizing: the output can be six times
+    // as long as the input.
+    buffered = null;
+    JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
     s.sanitize();
-    out.append(s.toCharSequence());
+    // Append in chunks: Writer.append(CharSequence) would first copy the
+    // whole output into one more String.
+    CharSequence sanitized = s.toCharSequence();
+    for (int i = 0, n = sanitized.length(); i < n; i += buf.length) {
+      out.append(sanitized, i, Math.min(n, i + buf.length));
+    }
   }
 
   /**
@@ -218,13 +271,18 @@ public final class JsonSanitizer {
    * encoded embeddable JSON to {@code out}.
    * Malformed UTF-8 is decoded as U+FFFD.
    * <p>
-   * The whole input is read into memory before sanitizing, so callers handling
-   * untrusted input should limit its size.  Neither {@code in} nor {@code out}
-   * is closed, but {@code out} is flushed.
+   * The whole input is read into memory before sanitizing, and output can be
+   * up to six times as long, so input that decodes to more than
+   * {@link #DEFAULT_MAXIMUM_INPUT_LENGTH} chars is rejected with an
+   * {@code IOException}; the overload with a {@code maximumInputLength} changes
+   * that limit.  Neither {@code in} nor {@code out} is closed, but {@code out}
+   * is flushed.
    *
    * @param in UTF-8 encoded JSON-like content.
    * @param out receives UTF-8 encoded embeddable JSON.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} decodes to more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH}
+   *     chars.
    */
   public static void sanitize(InputStream in, OutputStream out)
       throws IOException {
@@ -238,13 +296,39 @@ public final class JsonSanitizer {
    * @param in UTF-8 encoded JSON-like content.
    * @param out receives UTF-8 encoded embeddable JSON.
    * @param maximumNestingDepth maximum nesting depth.
-   * @throws IOException if reading {@code in} or writing {@code out} fails.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} decodes to more than {@link #DEFAULT_MAXIMUM_INPUT_LENGTH}
+   *     chars.
    */
   public static void sanitize(
       InputStream in, OutputStream out, int maximumNestingDepth)
       throws IOException {
+    sanitize(in, out, maximumNestingDepth, DEFAULT_MAXIMUM_INPUT_LENGTH);
+  }
+
+  /**
+   * Same as {@link JsonSanitizer#sanitize(InputStream, OutputStream, int)},
+   * but allows to set the maximum input length.
+   *
+   * @param in UTF-8 encoded JSON-like content.
+   * @param out receives UTF-8 encoded embeddable JSON.
+   * @param maximumNestingDepth maximum nesting depth.
+   * @param maximumInputLength the most chars {@code in} may decode to; at
+   *     least 0.
+   * @throws IOException if reading {@code in} or writing {@code out} fails, or
+   *     {@code in} decodes to more than {@code maximumInputLength} chars, in
+   *     which case nothing is written to {@code out}, and up to 8 KiB more of
+   *     {@code in} than the limit may have been read.
+   * @throws IllegalArgumentException if {@code maximumInputLength} is negative.
+   */
+  public static void sanitize(
+      InputStream in, OutputStream out, int maximumNestingDepth,
+      int maximumInputLength)
+      throws IOException {
     Writer w = new OutputStreamWriter(out, UTF_8);
-    sanitize(new InputStreamReader(in, UTF_8), w, maximumNestingDepth);
+    sanitize(
+        new InputStreamReader(in, UTF_8), w, maximumNestingDepth,
+        maximumInputLength);
     w.flush();
   }
 
@@ -487,16 +571,7 @@ public final class JsonSanitizer {
             // Look for a run of '.', [0-9], [a-zA-Z_$], [+-] which subsumes
             // all the above without including any JSON special characters
             // outside keyword and number.
-            int runEnd;
-            for (runEnd = i; runEnd < n; ++runEnd) {
-              char tch = jsonish.charAt(runEnd);
-              if (('a' <= tch && tch <= 'z') || ('0' <= tch && tch <= '9')
-                  || tch == '+' || tch == '-' || tch == '.'
-                  || ('A' <= tch && tch <= 'Z') || tch == '_' || tch == '$') {
-                continue;
-              }
-              break;
-            }
+            int runEnd = endOfWordRun(i);
 
             if (runEnd == i) {
               elide(i, i + 1);
@@ -505,21 +580,13 @@ public final class JsonSanitizer {
 
             state = requireValueState(i, state, true);
 
-            boolean isNumber = ('0' <= ch && ch <= '9')
-               || ch == '.' || ch == '+' || ch == '-';
+            boolean isNumber = isNumberStart(ch);
             boolean isKeyword = !isNumber && isKeyword(i, runEnd);
 
             if (!(isNumber || isKeyword)) {
               // We're going to have to quote the output.  Further expand to
               // include more of an unquoted token in a string.
-              for (; runEnd < n; ++runEnd) {
-                if (isJsonSpecialChar(runEnd)) {
-                  break;
-                }
-              }
-              if (runEnd < n && jsonish.charAt(runEnd) == '"') {
-                ++runEnd;
-              }
+              runEnd = endOfUnquotedString(runEnd);
             }
 
             if (state == State.AFTER_KEY) {
@@ -737,7 +804,8 @@ public final class JsonSanitizer {
               ++i;
               break;
             case 'v':  // Recognized by JS but not by JSON.
-              replace(i, i + 2, "\\u0008");
+              // U+000B, vertical tab, as in JavaScript (legacy wrote U+0008).
+              replace(i, i + 2, "\\u000b");
               ++i;
               break;
             case 'x':
@@ -923,7 +991,8 @@ public final class JsonSanitizer {
     int n = jsonish.length();
     int depth = 0;
     for (int i = start; i < n; ++i) {
-      switch (jsonish.charAt(i)) {
+      char ch = jsonish.charAt(i);
+      switch (ch) {
         case '"': case '\'':
           i = endOfQuotedString(jsonish, i) - 1;
           break;
@@ -936,10 +1005,62 @@ public final class JsonSanitizer {
         case '}': case ']':
           if (--depth == 0) { return i + 1; }
           break;
-        default: break;
+        default:
+          // Split unquoted text into tokens as sanitize() does, so a quote
+          // inside a word, as in a'b, does not start a string here when it
+          // does not there (SEC-005).
+          int runEnd = endOfWordRun(i);
+          if (runEnd != i) {
+            if (!(isNumberStart(ch) || isKeyword(i, runEnd))) {
+              runEnd = endOfUnquotedString(runEnd);
+            }
+            i = runEnd - 1;
+          }
+          break;
       }
     }
     return n;
+  }
+
+  /**
+   * The end of the run of '.', [0-9], [a-zA-Z_$] and [+-] starting at
+   * {@code start}: the extent of a number or keyword.
+   */
+  private int endOfWordRun(int start) {
+    int n = jsonish.length();
+    int runEnd;
+    for (runEnd = start; runEnd < n; ++runEnd) {
+      char tch = jsonish.charAt(runEnd);
+      if (('a' <= tch && tch <= 'z') || ('0' <= tch && tch <= '9')
+          || tch == '+' || tch == '-' || tch == '.'
+          || ('A' <= tch && tch <= 'Z') || tch == '_' || tch == '$') {
+        continue;
+      }
+      break;
+    }
+    return runEnd;
+  }
+
+  private static boolean isNumberStart(char ch) {
+    return ('0' <= ch && ch <= '9') || ch == '.' || ch == '+' || ch == '-';
+  }
+
+  /**
+   * Extends a word run that is neither a number nor a keyword to the end of
+   * the unquoted string it starts: up to the next JSON special character, and
+   * past a double quote there.
+   */
+  private int endOfUnquotedString(int runEnd) {
+    int n = jsonish.length();
+    for (; runEnd < n; ++runEnd) {
+      if (isJsonSpecialChar(runEnd)) {
+        break;
+      }
+    }
+    if (runEnd < n && jsonish.charAt(runEnd) == '"') {
+      ++runEnd;
+    }
+    return runEnd;
   }
 
   /**
@@ -1070,19 +1191,38 @@ public final class JsonSanitizer {
         // Putting out the underflowed value is the least bad option.
         elide(pos, intEnd);
 
-        String digits = jsonish.substring(firstDigitIndex, intEnd);
+        // Leading zeroes do not change the value.
+        int firstSignificantIndex = firstDigitIndex;
+        while (firstSignificantIndex < intEnd
+               && jsonish.charAt(firstSignificantIndex) == '0') {
+          ++firstSignificantIndex;
+        }
+        String digits = jsonish.substring(firstSignificantIndex, intEnd);
 
         int nDigits = digits.length();
         int base = probableBase > maxDigVal ? probableBase : maxDigVal > 10 ? 16 : 10;
         if (nDigits == 0) {
           sanitizedJson.append('0');
+        } else if (base == 10) {
+          // Already decimal, so copy rather than round-tripping through
+          // BigInteger which takes time quadratic in nDigits.
+          sanitizedJson.append(digits);
         } else if (DIGITS_BY_BASE_THAT_FIT_IN_63B[base] >= nDigits) {
           long value = Long.parseLong(digits, base);
           sanitizedJson.append(value);
-        } else {
+        } else if (nDigits <= MAX_EXACT_REENCODED_DIGITS) {
           // If there are lots of digits, we need to reencode using a BigInteger
           BigInteger value = new BigInteger(digits, base);
           sanitizedJson.append(value);
+        } else {
+          // BigInteger parsing is quadratic in nDigits, so an attacker could
+          // use a long literal to tie up the sanitizer.  Any value this large
+          // is at least 8**MAX_EXACT_REENCODED_DIGITS, far past the largest
+          // double, so JS evaluates it to Infinity, as it does 1e999.
+          // A fraction or exponent cannot follow 1e999, so elide any.
+          sanitizedJson.append("1e999");
+          elide(intEnd, end);
+          return;
         }
       }
     }
@@ -1214,7 +1354,9 @@ public final class JsonSanitizer {
     // Note that k is the number of digits in the decimal representation of s,
     // that s is not divisible by 10, and that the least significant digit of s
     // is not necessarily uniquely determined by these criteria.
-    int n = exp;  // Exponent
+    // A long: exp can be near the int limits and the digits move it further
+    // (SEC-006: {11e2147483647:0} gave the key "1.1e--2147483648").
+    long n = exp;  // Exponent
 
     // s, the string of decimal digits in the representation of m are stored in
     // sanitizedJson.substring(intStart).
@@ -1295,14 +1437,14 @@ public final class JsonSanitizer {
     // '.', followed by the remaining k-n digits of the decimal representation
     // of s.
     } else if (0 < n && n <= 21) {
-      sanitizedJson.insert(intStart + n, '.');
+      sanitizedJson.insert(intStart + (int) n, '.');
 
     // 8. If -6 < n <= 0, return the String consisting of the character '0',
     // followed by a decimal point '.', followed by -n occurrences of the
     // character '0', followed by the k digits of the decimal representation of
     // s.
     } else if (-6 < n && n <= 0) {
-      sanitizedJson.insert(intStart, "0.000000".substring(0, 2 - n));
+      sanitizedJson.insert(intStart, "0.000000".substring(0, 2 - (int) n));
 
     } else {
 
@@ -1324,7 +1466,7 @@ public final class JsonSanitizer {
       } else {
         sanitizedJson.insert(intStart + 1, '.');
       }
-      int nLess1 = n-1;
+      long nLess1 = n-1;
       sanitizedJson.append('e').append(nLess1 < 0 ? '-' : '+')
           .append(Math.abs(nLess1));
     }
@@ -1432,6 +1574,12 @@ public final class JsonSanitizer {
   };
 
   /**
+   * The most significant octal or hex digits that are reencoded exactly as
+   * decimal.  Enough for any value that fits in a double.
+   */
+  private static final int MAX_EXACT_REENCODED_DIGITS = 1024;
+
+  /**
    * Looks for a literal character or escape sequence at left in s.
    * Packs the char into the lowest 16 bytes of the output and the
    * count of characters in the sequence in the remaining bits
@@ -1492,7 +1640,7 @@ public final class JsonSanitizer {
         case 'n': return 0x2000A;
         case 'r': return 0x2000D;
         case 't': return 0x20009;
-        case 'v': return 0x20008;
+        case 'v': return 0x2000B;
         default: break;
       }
       return (0x20000) | nc;

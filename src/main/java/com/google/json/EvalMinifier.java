@@ -86,9 +86,18 @@ public final class EvalMinifier {
         // A trailing backslash would otherwise step past the end of input.
         if (tokEnd > n) { tokEnd = n; }
       } else if (isLetterOrNumberChar(ch)) {
+        boolean number = ('0' <= ch && ch <= '9') || ch == '-' || ch == '.';
         tokEnd = i + 1;
-        while (tokEnd < n && isLetterOrNumberChar(json.charAt(tokEnd))) {
-          ++tokEnd;
+        while (tokEnd < n) {
+          char tch = json.charAt(tokEnd);
+          // In a number, a '+' after the 'e' is the exponent's sign:
+          // splitting 12345e+1 there pooled "12345e" (SEC-004).
+          if (isLetterOrNumberChar(tch)
+              || (number && tch == '+' && (json.charAt(tokEnd - 1) | 32) == 'e')) {
+            ++tokEnd;
+          } else {
+            break;
+          }
         }
       } else {
         continue;

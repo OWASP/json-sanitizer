@@ -407,7 +407,8 @@ public final class JsonSanitizerTest {
   public final void testSanitizeCharSequence() {
     // Issue #25
     StringBuilder clean = new StringBuilder("{\"a\":[1,2]}");
-    assertSame(clean, sanitize(clean));
+    // SEC-002 (Q4b): an immutable copy, not the caller's StringBuilder.
+    assertEquals("{\"a\":[1,2]}", sanitize(clean));
     assertEquals("{\"a\":[1,2]}",
         sanitize(new StringBuilder("{a:[1,2,]}")).toString());
     assertEquals("null", sanitize((CharSequence) null).toString());

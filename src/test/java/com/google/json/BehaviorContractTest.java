@@ -49,9 +49,8 @@ public final class BehaviorContractTest {
     // Look-behind for --> and look-ahead for ]]> decode escapes too.
     assertSanitized("\"x\\u002d\\u002d\\u003e\"", "\"x\\x2d\\x2d>\"");
     assertSanitized("\"\\u005d\\u005d>\"", "\"]\\x5d>\"");
-    // Legacy behavior, pinned: \v becomes U+0008. JavaScript's \v is U+000B;
-    // the brief approves that change for Phase 3, which updates this line.
-    assertSanitized("[\"a\\u0008b\"]", "[\"a\\vb\"]");
+    // \v is U+000B, as in JavaScript (legacy wrote U+0008; approved for Phase 3).
+    assertSanitized("[\"a\\u000bb\"]", "[\"a\\vb\"]");
   }
 
   /** RULE-024: an over-deep value becomes null, whole; siblings stay; nothing throws. */

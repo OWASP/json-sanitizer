@@ -59,8 +59,10 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.TreeMap;
 import java.util.zip.GZIPOutputStream;
 
 public final class GoldenCorpus {
@@ -82,9 +84,10 @@ public final class GoldenCorpus {
       }
       record(args[1], dump, provenance);
     } else if ("verify".equals(cmd)) {
-      System.exit(verify(args[1]) ? 0 : 1);
-    } else if ("dump".equals(cmd) && args.length == 4) {
-      dumpRange(Integer.parseInt(args[1]), Integer.parseInt(args[2]), args[3]);
+      System.exit(verify(args[1], LEGACY) ? 0 : 1);
+    } else if ("dump".equals(cmd) && (args.length == 4 || args.length == 5)) {
+      Legs impl = args.length == 5 && "legacy".equals(args[4]) ? LEGACY : CURRENT;
+      dumpRange(Integer.parseInt(args[1]), Integer.parseInt(args[2]), args[3], impl);
     } else {
       usage();
     }
@@ -93,31 +96,63 @@ public final class GoldenCorpus {
   static void usage() {
     System.err.println("usage: GoldenCorpus record <digests-file> [--dump <gz-file>] [--provenance <text>]");
     System.err.println("       GoldenCorpus verify <digests-file>");
-    System.err.println("       GoldenCorpus dump <from-index> <to-index> <file>");
+    System.err.println("       GoldenCorpus dump <from-index> <to-index> <file> [current|legacy]");
     System.exit(2);
   }
 
   // ---- the seven legs -------------------------------------------------------------------
 
-  static String[] legs(String input) {
-    String[] out = new String[7];
-    out[0] = JsonSanitizer.sanitize(input);
-    out[1] = JsonSanitizer.sanitize(new StringBuilder(input)).toString();
-    out[2] = JsonSanitizer.sanitize(input, 1);
-    out[3] = JsonSanitizer.sanitize(input, 3);
-    out[4] = EvalMinifier.minify(input);
-    try {
-      StringBuilder r = new StringBuilder();
-      JsonSanitizer.sanitize(new StringReader(input), r);
-      out[5] = r.toString();
-      ByteArrayOutputStream b = new ByteArrayOutputStream();
-      JsonSanitizer.sanitize(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), b);
-      out[6] = new String(b.toByteArray(), StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    return out;
+  /** The seven calls on one input, by one implementation. */
+  interface Legs {
+    String[] legs(String input);
   }
+
+  /** The library under test (src/main). */
+  static final Legs CURRENT = new Legs() {
+    public String[] legs(String input) {
+      String[] out = new String[7];
+      out[0] = JsonSanitizer.sanitize(input);
+      out[1] = JsonSanitizer.sanitize(new StringBuilder(input)).toString();
+      out[2] = JsonSanitizer.sanitize(input, 1);
+      out[3] = JsonSanitizer.sanitize(input, 3);
+      out[4] = EvalMinifier.minify(input);
+      try {
+        StringBuilder r = new StringBuilder();
+        JsonSanitizer.sanitize(new StringReader(input), r);
+        out[5] = r.toString();
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        JsonSanitizer.sanitize(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), b);
+        out[6] = new String(b.toByteArray(), StandardCharsets.UTF_8);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return out;
+    }
+  };
+
+  /** The legacy release (d9b2768), kept verbatim in com.google.json.legacy: the oracle. */
+  static final Legs LEGACY = new Legs() {
+    public String[] legs(String input) {
+      String[] out = new String[7];
+      out[0] = com.google.json.legacy.JsonSanitizer.sanitize(input);
+      out[1] = com.google.json.legacy.JsonSanitizer.sanitize(new StringBuilder(input)).toString();
+      out[2] = com.google.json.legacy.JsonSanitizer.sanitize(input, 1);
+      out[3] = com.google.json.legacy.JsonSanitizer.sanitize(input, 3);
+      out[4] = com.google.json.legacy.EvalMinifier.minify(input);
+      try {
+        StringBuilder r = new StringBuilder();
+        com.google.json.legacy.JsonSanitizer.sanitize(new StringReader(input), r);
+        out[5] = r.toString();
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        com.google.json.legacy.JsonSanitizer.sanitize(
+            new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)), b);
+        out[6] = new String(b.toByteArray(), StandardCharsets.UTF_8);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return out;
+    }
+  };
 
   // ---- digests ----------------------------------------------------------------------------
 
@@ -157,7 +192,16 @@ public final class GoldenCorpus {
     String total;
   }
 
-  static Result compute(Writer dump, int dumpFrom, int dumpTo) throws Exception {
+  /** Sees each input and its legs as compute() digests them. */
+  interface Observer {
+    void observe(int index, String input, String[] legs);
+  }
+
+  static Result compute(Legs impl, Writer dump, int dumpFrom, int dumpTo) throws Exception {
+    return compute(impl, dump, dumpFrom, dumpTo, null);
+  }
+
+  static Result compute(Legs impl, Writer dump, int dumpFrom, int dumpTo, Observer observer) throws Exception {
     MessageDigest din = MessageDigest.getInstance("SHA-256");
     MessageDigest dout = MessageDigest.getInstance("SHA-256");
     MessageDigest dtotal = MessageDigest.getInstance("SHA-256");
@@ -166,7 +210,8 @@ public final class GoldenCorpus {
     int i = 0, first = 0;
     while (corpus.hasNext()) {
       String input = corpus.next();
-      String[] legs = legs(input);
+      String[] legs = impl.legs(input);
+      if (observer != null) { observer.observe(i, input, legs); }
       update(din, input);
       r.inputChars += input.length();
       if (input.length() > r.maxInput) { r.maxInput = input.length(); }
@@ -202,7 +247,7 @@ public final class GoldenCorpus {
     }
     long t0 = System.nanoTime();
     Result r;
-    try { r = compute(dump, 0, Integer.MAX_VALUE); } finally { if (dump != null) { dump.close(); } }
+    try { r = compute(LEGACY, dump, 0, Integer.MAX_VALUE); } finally { if (dump != null) { dump.close(); } }
     PrintWriter w = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.US_ASCII));
     w.println("# " + FORMAT);
     w.println("# " + header());
@@ -218,7 +263,7 @@ public final class GoldenCorpus {
     System.out.println("stats: input chars " + r.inputChars + ", max input " + r.maxInput + ", output chars " + r.outputChars);
   }
 
-  static boolean verify(String file) throws Exception {
+  static boolean verify(String file, Legs impl) throws Exception {
     List<String> expectedBlocks = new ArrayList<String>();
     String expectedTotal = null, expectedHeader = null;
     BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.US_ASCII));
@@ -240,7 +285,7 @@ public final class GoldenCorpus {
       return false;
     }
     long t0 = System.nanoTime();
-    Result r = compute(null, 0, -1);
+    Result r = compute(impl, null, 0, -1);
     int mismatches = 0;
     List<String> report = new ArrayList<String>();
     int n = Math.max(expectedBlocks.size(), r.blocks.size());
@@ -278,9 +323,95 @@ public final class GoldenCorpus {
     return false;
   }
 
-  static void dumpRange(int from, int to, String file) throws Exception {
+  static void dumpRange(int from, int to, String file, Legs impl) throws Exception {
     Writer w = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
-    try { compute(w, from, to); } finally { w.close(); }
+    try { compute(impl, w, from, to); } finally { w.close(); }
+  }
+
+  // ---- comparing the build under test with the legacy oracle -------------------------------
+
+  /** Names the approved class of one output difference, or returns null if none explains it. */
+  interface Classifier {
+    String classify(String input, int leg, String legacy, String current);
+  }
+
+  /** One input and leg whose output differs from the legacy oracle's. */
+  static final class Difference {
+    final int index, leg;
+    final String input, legacy, current;
+    Difference(int index, int leg, String input, String legacy, String current) {
+      this.index = index; this.leg = leg; this.input = input; this.legacy = legacy; this.current = current;
+    }
+    @Override public String toString() {
+      return "input " + index + " leg " + LEG_NAMES[leg] + ": " + clip(escape(input))
+          + "\n    legacy:  " + clip(escape(legacy)) + "\n    current: " + clip(escape(current));
+    }
+    private static String clip(String s) { return s.length() <= 300 ? s : s.substring(0, 300) + "...(" + s.length() + " chars)"; }
+  }
+
+  static final class Comparison {
+    /** The legacy oracle's digests, to check against the recorded baseline. */
+    Result legacy;
+    /** Differing (input, leg) pairs by approved class. */
+    final Map<String, Integer> counts = new TreeMap<String, Integer>();
+    /** The first unexplained differences, and how many there were. */
+    final List<Difference> unexplained = new ArrayList<Difference>();
+    int unexplainedCount;
+  }
+
+  /**
+   * One pass over the corpus: digests the legacy oracle's outputs (as verify does) and
+   * classifies every leg where the build under test differs from them.
+   */
+  static Comparison compare(final Classifier classifier) throws Exception {
+    final Comparison c = new Comparison();
+    c.legacy = compute(LEGACY, null, 0, -1, new Observer() {
+      public void observe(int index, String input, String[] legacyLegs) {
+        String[] current = CURRENT.legs(input);
+        for (int leg = 0; leg < legacyLegs.length; ++leg) {
+          if (legacyLegs[leg].equals(current[leg])) { continue; }
+          String cls = classifier.classify(input, leg, legacyLegs[leg], current[leg]);
+          if (cls == null) {
+            if (c.unexplained.size() < 20) {
+              c.unexplained.add(new Difference(index, leg, input, legacyLegs[leg], current[leg]));
+            }
+            ++c.unexplainedCount;
+          } else {
+            Integer n = c.counts.get(cls);
+            c.counts.put(cls, n == null ? 1 : n + 1);
+          }
+        }
+      }
+    });
+    return c;
+  }
+
+  /** The recorded digest lines (blocks and total) of a digests file, or null if it is not one. */
+  static List<String> recordedLines(String file) throws Exception {
+    List<String> lines = new ArrayList<String>();
+    BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.US_ASCII));
+    try {
+      String line = br.readLine();
+      if (line == null || !line.equals("# " + FORMAT)) { return null; }
+      while ((line = br.readLine()) != null) {
+        if (line.startsWith("# seed=")) {
+          if (!line.substring(2).equals(header())) { return null; }
+        } else if (line.startsWith("block ") || line.startsWith("total ")) {
+          lines.add(line);
+        }
+      }
+    } finally {
+      br.close();
+    }
+    return lines;
+  }
+
+  /** The digest lines of a computed result, in the same form as recordedLines. */
+  static List<String> lines(Result r) {
+    List<String> lines = new ArrayList<String>();
+    for (Block b : r.blocks) { lines.add(b.line()); }
+    lines.add("total " + r.inputs + " " + r.total);
+    return lines;
   }
 
   static void writeRecord(Writer w, int index, String input, String[] legs) throws IOException {
