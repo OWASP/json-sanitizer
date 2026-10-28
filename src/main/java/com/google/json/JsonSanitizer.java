@@ -1341,7 +1341,9 @@ public final class JsonSanitizer {
     // Note that k is the number of digits in the decimal representation of s,
     // that s is not divisible by 10, and that the least significant digit of s
     // is not necessarily uniquely determined by these criteria.
-    int n = exp;  // Exponent
+    // A long: exp can be near the int limits and the digits move it further
+    // (SEC-006: {11e2147483647:0} gave the key "1.1e--2147483648").
+    long n = exp;  // Exponent
 
     // s, the string of decimal digits in the representation of m are stored in
     // sanitizedJson.substring(intStart).
@@ -1422,14 +1424,14 @@ public final class JsonSanitizer {
     // '.', followed by the remaining k-n digits of the decimal representation
     // of s.
     } else if (0 < n && n <= 21) {
-      sanitizedJson.insert(intStart + n, '.');
+      sanitizedJson.insert(intStart + (int) n, '.');
 
     // 8. If -6 < n <= 0, return the String consisting of the character '0',
     // followed by a decimal point '.', followed by -n occurrences of the
     // character '0', followed by the k digits of the decimal representation of
     // s.
     } else if (-6 < n && n <= 0) {
-      sanitizedJson.insert(intStart, "0.000000".substring(0, 2 - n));
+      sanitizedJson.insert(intStart, "0.000000".substring(0, 2 - (int) n));
 
     } else {
 
@@ -1451,7 +1453,7 @@ public final class JsonSanitizer {
       } else {
         sanitizedJson.insert(intStart + 1, '.');
       }
-      int nLess1 = n-1;
+      long nLess1 = n-1;
       sanitizedJson.append('e').append(nLess1 < 0 ? '-' : '+')
           .append(Math.abs(nLess1));
     }

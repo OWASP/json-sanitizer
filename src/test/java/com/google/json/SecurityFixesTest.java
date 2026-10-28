@@ -184,6 +184,24 @@ public final class SecurityFixesTest {
     assertTrue(checked > 20, "only " + checked + " inputs checked");
   }
 
+  /**
+   * SEC-006 (CWE-190): a numeric key's decimal exponent was an int, so it
+   * overflowed near the int limits ({11e2147483647:0} gave the key
+   * "1.1e--2147483648"). The digits are kept, with exact arithmetic (Q4e).
+   */
+  @Test
+  public final void testSec006NumericKeyExponentDoesNotOverflow() {
+    assertSanitized("{\"1.1e+2147483648\":0}", "{11e2147483647:0}");
+    // The same overflow downward: four places of fraction push the exponent below the int range.
+    assertSanitized("{\"1e-2147483652\":0}", "{0.0001e-2147483648:0}");
+    // Unchanged: in range, the int limits themselves, out-of-range exponents and values.
+    assertSanitized("{\"1.1e+2147483647\":0}", "{11e2147483646:0}");
+    assertSanitized("{\"1.1e-2147483647\":0}", "{11e-2147483648:0}");
+    assertSanitized("{\"1e+400\":0}", "{1e400:0}");
+    assertSanitized("{\"11e99999999999\":0}", "{11e99999999999:0}");
+    assertSanitized("[11e2147483647]", "[11e2147483647]");
+  }
+
   /** Feeds an endless input to the default stream overloads; run by testSec003 in a 256 MB JVM. */
   static final class EndlessInput {
     public static void main(String[] args) {

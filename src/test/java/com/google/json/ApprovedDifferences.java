@@ -41,6 +41,7 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
     Map<String, Integer> m = new LinkedHashMap<String, Integer>();
     m.put("SEC-001 over-long hex/octal literal is 1e999", 35280);
     m.put("SEC-005 over-deep value skipped as the main loop tokenizes it", 12834);
+    m.put("SEC-006 numeric key exponent no longer wraps at the int limit", 14);
     EXPECTED_COUNTS = Collections.unmodifiableMap(m);
   }
 
@@ -94,7 +95,35 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
         return r.id();
       }
     }
+    if (exponentNoLongerWraps(input, legacy, current)) {
+      return "SEC-006 numeric key exponent no longer wraps at the int limit";
+    }
     return null;
+  }
+
+  // ---- SEC-006 ------------------------------------------------------------------------------
+
+  /** What the legacy key canonicalizer printed when its int exponent wrapped to Integer.MIN_VALUE. */
+  private static final String WRAPPED_EXPONENT = "e--2147483648";
+
+  /**
+   * SEC-006: the legacy code printed a numeric key's exponent from an int, so
+   * an exponent of magnitude 2^31 wrapped to Integer.MIN_VALUE and printed as
+   * "e--2147483648", which no correct output contains. An int is exact modulo
+   * 2^32, so the true exponent is 2147483648 with the input exponent's sign:
+   * the new output must be the legacy output with exactly that replacement.
+   * Legacy cannot be asked to print that exponent, so this class is checked
+   * on the output instead of by replaying a rewritten input.
+   */
+  static boolean exponentNoLongerWraps(String input, String legacy, String current) {
+    int at = legacy.indexOf(WRAPPED_EXPONENT);
+    if (at < 0 || legacy.indexOf(WRAPPED_EXPONENT, at + 1) >= 0) { return false; }
+    int e = Math.max(input.lastIndexOf('e'), input.lastIndexOf('E'));
+    if (e < 0 || e + 1 >= input.length()) { return false; }
+    char sign = input.charAt(e + 1) == '-' ? '-' : '+';
+    String expected = legacy.substring(0, at) + "e" + sign + "2147483648"
+        + legacy.substring(at + WRAPPED_EXPONENT.length());
+    return expected.equals(current);
   }
 
   // ---- SEC-001 ------------------------------------------------------------------------------
