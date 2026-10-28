@@ -65,14 +65,28 @@ the valid JSON string `null` is substituted.
 
 ## Output
 
-The output is well-formed JSON as defined by
-[RFC 4627](http://www.ietf.org/rfc/rfc4627.txt).
-The output satisfies these additional properties:
+The output satisfies these guarantees, which the `JsonSanitizer` javadoc lists identically:
 
- * The output will not contain the substrings (case-insensitively) `"<script"`, `"</script"` or `"<!--"` and can thus be embedded inside an HTML script element without further encoding.
- * The output will not contain the substring `"]]>"` and can thus be embedded inside an XML CDATA section without further encoding.
- * The output is a valid Javascript expression, so can be parsed by Javascript's `eval` builtin (after being wrapped in parentheses) or by `JSON.parse`.  Specifically, the output will not contain any string literals with embedded JS newlines (U+2028 Paragraph separator or U+2029 Line separator).
- * The output contains only valid Unicode [scalar values](http://www.unicode.org/glossary/#unicode_scalar_value) (no isolated [UTF-16 surrogates](http://www.unicode.org/glossary/#surrogate_pair)) that are [allowed in XML](http://www.w3.org/TR/xml/#charsets) unescaped.
+ 1. It is exactly one JSON value as defined by [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259). Anything after the first complete value, a top-level comma or an unmatched close bracket is dropped: `[1]],alert(1)` becomes `[1]`.
+ 2. It does not contain `<script`, `</script`, `<!--` or `-->`, in any case, so it can be embedded in an HTML script element without further encoding.
+ 3. It does not contain `]]>`, so it can be embedded in an XML CDATA section without further encoding. (`<![CDATA[` itself is not escaped.)
+ 4. It is a valid JavaScript expression, so it can be parsed by `JSON.parse`, or by `eval` after being wrapped in parentheses; no string contains a raw U+2028 or U+2029.
+ 5. It contains no raw control characters, lone UTF-16 surrogates, U+FFFE or U+FFFF; in strings these are written as `\u`*XXXX* escapes, so the output is valid Unicode and allowed in XML. An escaped lone surrogate is valid RFC 8259 but not [I-JSON](https://www.rfc-editor.org/rfc/rfc7493).
+ 6. Sanitizing the output again returns it unchanged.
+
+Brackets nest at most 64 levels deep by default (`DEFAULT_NESTING_DEPTH`), or as set by a `maximumNestingDepth` parameter (at most 4096); a deeper array or object is replaced by `null`. Hex and octal literals of more than 1024 significant digits become `1e999`, JavaScript's Infinity. Numeric object keys are converted to their canonical string form textually: an exponent outside the double range is kept (`{1e400:0}` becomes `{"1e+400":0}`), not turned into `"Infinity"`.
+
+
+## Requirements and limits
+
+ * **Java 8 or later.** The jar's module name is `com.google.json`; it has no runtime dependencies.
+ * `sanitize(String)` and `sanitize(CharSequence)` take time linear in the input. `sanitize(CharSequence)` always returns a new `String`.
+ * `sanitize(Reader, Appendable)` and `sanitize(InputStream, OutputStream)` (UTF-8) read the whole input into memory, and output can be six times as long. They reject input longer than 4 Mi chars (`DEFAULT_MAXIMUM_INPUT_LENGTH`) with an `IOException` and write nothing; overloads with a `maximumInputLength` parameter change the limit. Malformed UTF-8 becomes U+FFFD; a byte-order mark before the value is dropped.
+
+
+## EvalMinifier (deprecated)
+
+`EvalMinifier` turns sanitized JSON into a smaller JavaScript expression that must be run with `eval`, which a strict Content Security Policy forbids, and compression makes the savings small. It keeps working and is covered by the same tests, but new code should send `JsonSanitizer` output and parse it with `JSON.parse`.
 
 
 ## Security
@@ -110,4 +124,4 @@ above.  Thus, if used on input that is usually well formed, it has minimal
 memory overhead.
 
 The sanitize method takes O(n) time where n is the length of the input
-in UTF-16 code-units.
+in UTF-16 code-units, including for very long number literals.
