@@ -116,9 +116,12 @@ public final class JsonSanitizer {
 
   /**
    * The default for the maximumInputLength parameter of the Reader and
-   * InputStream overloads: 16 Mi chars (16,777,216).
+   * InputStream overloads: 4 Mi chars (4,194,304).  Output can be six times
+   * as long as the input, so the worst case at this limit (every char
+   * escaped) needs a heap of about 128 MB on Java 21 and 192 MB on Java 8,
+   * whose strings are always UTF-16: roughly 30 to 45 bytes per input char.
    */
-  public static final int DEFAULT_MAXIMUM_INPUT_LENGTH = 1 << 24;
+  public static final int DEFAULT_MAXIMUM_INPUT_LENGTH = 1 << 22;
 
   /**
    * Given JSON-like content, produces a string of JSON that is safe to embed,
@@ -157,7 +160,7 @@ public final class JsonSanitizer {
    * @return embeddable JSON, always as an immutable {@code String}, never
    *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
-  public static CharSequence sanitize(CharSequence jsonish) {
+  public static String sanitize(CharSequence jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
   }
 
@@ -170,7 +173,7 @@ public final class JsonSanitizer {
    * @return embeddable JSON, always as an immutable {@code String}, never
    *     {@code jsonish} itself, even when it is already embeddable JSON.
    */
-  public static CharSequence sanitize(
+  public static String sanitize(
       CharSequence jsonish, int maximumNestingDepth) {
     if (jsonish == null) {
       return sanitize((String) null, maximumNestingDepth);
@@ -238,21 +241,29 @@ public final class JsonSanitizer {
       throw new IllegalArgumentException(
           "maximumInputLength " + maximumInputLength);
     }
-    StringBuilder jsonish = new StringBuilder();
+    StringBuilder buffered = new StringBuilder();
     char[] buf = new char[8192];
     for (int n; (n = in.read(buf)) >= 0;) {
       // Fail before buffering more than allowed, so endless input cannot
       // exhaust the heap (SEC-003).
-      if (n > maximumInputLength - jsonish.length()) {
+      if (n > maximumInputLength - buffered.length()) {
         throw new IOException(
             "JSON-like input is longer than " + maximumInputLength + " chars");
       }
-      jsonish.append(buf, 0, n);
+      buffered.append(buf, 0, n);
     }
-    JsonSanitizer s = new JsonSanitizer(
-        jsonish.toString(), maximumNestingDepth);
+    String jsonish = buffered.toString();
+    // Release the read buffer before sanitizing: the output can be six times
+    // as long as the input.
+    buffered = null;
+    JsonSanitizer s = new JsonSanitizer(jsonish, maximumNestingDepth);
     s.sanitize();
-    out.append(s.toCharSequence());
+    // Append in chunks: Writer.append(CharSequence) would first copy the
+    // whole output into one more String.
+    CharSequence sanitized = s.toCharSequence();
+    for (int i = 0, n = sanitized.length(); i < n; i += buf.length) {
+      out.append(sanitized, i, Math.min(n, i + buf.length));
+    }
   }
 
   /**
@@ -306,7 +317,8 @@ public final class JsonSanitizer {
    *     least 0.
    * @throws IOException if reading {@code in} or writing {@code out} fails, or
    *     {@code in} decodes to more than {@code maximumInputLength} chars, in
-   *     which case nothing is written to {@code out}.
+   *     which case nothing is written to {@code out}, and up to 8 KiB more of
+   *     {@code in} than the limit may have been read.
    * @throws IllegalArgumentException if {@code maximumInputLength} is negative.
    */
   public static void sanitize(

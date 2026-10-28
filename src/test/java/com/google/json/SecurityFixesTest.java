@@ -142,10 +142,12 @@ public final class SecurityFixesTest {
     assertEquals(0, noBytes.size());
     assertThrows(IllegalArgumentException.class, () ->
         JsonSanitizer.sanitize(new StringReader("1"), new StringBuilder(), 64, -1));
-    assertEquals(1 << 24, JsonSanitizer.DEFAULT_MAXIMUM_INPUT_LENGTH);
+    assertEquals(1 << 22, JsonSanitizer.DEFAULT_MAXIMUM_INPUT_LENGTH);
 
-    // The exit criterion: endless input, default limit, a 256 MB heap.
-    for (String overload : new String[] { "reader", "stream" }) {
+    // The exit criterion: endless input, default limit, a 256 MB heap. And the
+    // worst case the security review found: input of exactly the default
+    // length in which every char expands six-fold, held as UTF-16.
+    for (String overload : new String[] { "reader", "stream", "worst-reader", "worst-stream" }) {
       String java = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
       Process p = new ProcessBuilder(java, "-Xmx256m", "-cp", System.getProperty("java.class.path"),
           EndlessInput.class.getName(), overload).redirectErrorStream(true).start();
@@ -153,7 +155,10 @@ public final class SecurityFixesTest {
       Scanner sc = new Scanner(p.getInputStream(), "UTF-8").useDelimiter("\\A");
       String log = sc.hasNext() ? sc.next().trim() : "";
       assertEquals(0, p.exitValue(), overload + ": " + log);
-      assertEquals("rejected: JSON-like input is longer than 16777216 chars", log, overload);
+      int worstOutput = 6 * (JsonSanitizer.DEFAULT_MAXIMUM_INPUT_LENGTH - 3) + 3;
+      assertEquals(overload.startsWith("worst")
+          ? "sanitized: " + worstOutput + " chars"
+          : "rejected: JSON-like input is longer than 4194304 chars", log, overload);
     }
   }
 
@@ -245,10 +250,38 @@ public final class SecurityFixesTest {
     assertEquals(0x2000B, unescapedChar.invoke(null, "\\v", 0));
   }
 
-  /** Feeds an endless input to the default stream overloads; run by testSec003 in a 256 MB JVM. */
+  /** Feeds endless or worst-case input to the default stream overloads; run by testSec003 in a 256 MB JVM. */
   static final class EndlessInput {
     public static void main(String[] args) {
       try {
+        if (args[0].startsWith("worst")) {
+          // A string of control chars, each escaped as six chars, and one CJK char.
+          char[] body = new char[JsonSanitizer.DEFAULT_MAXIMUM_INPUT_LENGTH];
+          Arrays.fill(body, (char) 1);
+          body[0] = '"';
+          body[body.length - 2] = '\u4e2d';
+          body[body.length - 1] = '"';
+          final long[] written = { 0 };
+          if ("worst-reader".equals(args[0])) {
+            JsonSanitizer.sanitize(new java.io.CharArrayReader(body), new Appendable() {
+              public Appendable append(CharSequence csq) { written[0] += csq.length(); return this; }
+              public Appendable append(CharSequence csq, int start, int end) { written[0] += end - start; return this; }
+              public Appendable append(char c) { ++written[0]; return this; }
+            });
+          } else {
+            byte[] utf8 = new String(body).getBytes(StandardCharsets.UTF_8);
+            body = null;
+            java.io.OutputStream counting = new java.io.OutputStream() {
+              @Override public void write(int b) { if ((b & 0xC0) != 0x80) { ++written[0]; } }
+              @Override public void write(byte[] b, int off, int len) {
+                for (int i = off; i < off + len; ++i) { if ((b[i] & 0xC0) != 0x80) { ++written[0]; } }
+              }
+            };
+            JsonSanitizer.sanitize(new ByteArrayInputStream(utf8), counting);
+          }
+          System.out.println("sanitized: " + written[0] + " chars");
+          return;
+        }
         if ("reader".equals(args[0])) {
           JsonSanitizer.sanitize(new Reader() {
             @Override public int read(char[] buf, int off, int len) {

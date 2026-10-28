@@ -166,9 +166,57 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
       char last = v.charAt(v.length() - 1);
       if ((last | 32) == 'e' && v.charAt(0) != '"') { signature = true; }
     }
-    if (!signature) { return false; }
+    if (!signature || !isWellFormedPool(current)) { return false; }
+    String lower = current.toLowerCase(java.util.Locale.ROOT);
+    for (String breakout : new String[] { "</script", "<script", "<!--", "-->", "]]>" }) {
+      if (lower.contains(breakout)) { return false; }
+    }
     String expanded = expand(current);
     return expanded != null && expanded.equals(withoutWhitespaceOutsideStrings(JsonSanitizer.sanitize(input)));
+  }
+
+  private static final java.util.regex.Pattern JSON_NUMBER =
+      java.util.regex.Pattern.compile("-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?");
+
+  /**
+   * The parameters are exactly the minifier's names in order (a, b, ...),
+   * each is used in the body, and each pooled value is one strict JSON scalar.
+   */
+  private static boolean isWellFormedPool(String minified) {
+    int bodyStart = minified.indexOf(RETURN);
+    if (!minified.startsWith(HEAD) || bodyStart < 0) { return false; }
+    String[] params = minified.substring(HEAD.length(), bodyStart).split(",", -1);
+    List<String> values = pooledValues(minified);
+    if (values.size() != params.length) { return false; }
+    EvalMinifier.NameGenerator names = new EvalMinifier.NameGenerator();
+    int bodyEnd = endOfJsonValue(minified, bodyStart + RETURN.length());
+    String body = minified.substring(bodyStart + RETURN.length(), bodyEnd);
+    for (int i = 0; i < params.length; ++i) {
+      if (!params[i].equals(names.next())) { return false; }
+      if (!java.util.regex.Pattern.compile("(^|[^A-Za-z0-9_$])" + java.util.regex.Pattern.quote(params[i])
+          + "($|[^A-Za-z0-9_$])").matcher(withoutStrings(body)).find()) { return false; }
+      String v = values.get(i);
+      boolean scalar = v.equals("true") || v.equals("false") || v.equals("null")
+          || JSON_NUMBER.matcher(v).matches()
+          || (v.charAt(0) == '"' && endOfJsonString(v, 0) == v.length() && v.length() >= 2);
+      if (!scalar) { return false; }
+    }
+    return true;
+  }
+
+  /** JSON text with the contents of its strings blanked, so names inside strings do not count. */
+  private static String withoutStrings(String json) {
+    StringBuilder sb = new StringBuilder(json.length());
+    for (int i = 0; i < json.length();) {
+      if (json.charAt(i) == '"') {
+        int end = endOfJsonString(json, i);
+        sb.append("\"\"");
+        i = end;
+      } else {
+        sb.append(json.charAt(i++));
+      }
+    }
+    return sb.toString();
   }
 
   private static String withoutWhitespaceOutsideStrings(String json) {
@@ -200,7 +248,7 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
     int end = minified.length() - TAIL.length();
     while (i < end) {
       int valueEnd = endOfJsonValue(minified, i);
-      if (valueEnd < 0) { return new ArrayList<String>(); }
+      if (valueEnd <= i) { return new ArrayList<String>(); }
       values.add(minified.substring(i, valueEnd));
       i = valueEnd;
       if (i < end && minified.charAt(i) == ',') { ++i; }
@@ -290,12 +338,30 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
    * Legacy cannot be asked to print that exponent, so this class is checked
    * on the output instead of by replaying a rewritten input.
    */
+  /**
+   * The exponent sign of the one numeric token in the input whose exponent's
+   * magnitude is within 1000 of 2^31, or null if there is not exactly one.
+   */
+  private static Character exponentSignNearIntLimit(String input) {
+    java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+        "(?<![A-Za-z0-9_$.])[0-9.]+[eE]([+-]?)0*([0-9]{1,12})(?![0-9])").matcher(input);
+    Character sign = null;
+    int found = 0;
+    while (m.find()) {
+      long magnitude = Long.parseLong(m.group(2));
+      if (Math.abs(magnitude - (1L << 31)) <= 1000) {
+        ++found;
+        sign = "-".equals(m.group(1)) ? '-' : '+';
+      }
+    }
+    return found == 1 ? sign : null;
+  }
+
   static boolean exponentNoLongerWraps(String input, String legacy, String current) {
     int at = legacy.indexOf(WRAPPED_EXPONENT);
     if (at < 0 || legacy.indexOf(WRAPPED_EXPONENT, at + 1) >= 0) { return false; }
-    int e = Math.max(input.lastIndexOf('e'), input.lastIndexOf('E'));
-    if (e < 0 || e + 1 >= input.length()) { return false; }
-    char sign = input.charAt(e + 1) == '-' ? '-' : '+';
+    Character sign = exponentSignNearIntLimit(input);
+    if (sign == null) { return false; }
     String expected = legacy.substring(0, at) + "e" + sign + "2147483648"
         + legacy.substring(at + WRAPPED_EXPONENT.length());
     return expected.equals(current);
@@ -539,6 +605,10 @@ final class ApprovedDifferences implements GoldenCorpus.Classifier {
       char l = legacy.charAt(i), c = current.charAt(i);
       if (l == c) { continue; }
       if (l != '8' || c != 'b' || i < 5 || !legacy.startsWith("\\u000", i - 5)) { return false; }
+      // The backslash must start an escape, not be the second half of one.
+      int run = 0;
+      while (i - 6 - run >= 0 && legacy.charAt(i - 6 - run) == '\\') { ++run; }
+      if ((run & 1) != 0) { return false; }
       ++swaps;
     }
     int escapes = 0;
