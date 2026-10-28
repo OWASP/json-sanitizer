@@ -2,6 +2,8 @@
 
 ## 1.3.0 (unreleased)
 
+**New Maven coordinates: `org.owasp:json-sanitizer`** (was `com.mikesamuel:json-sanitizer`). Only the groupId changed; the artifactId, the Java package `com.google.json` and the module name are the same. A relocation POM at `com.mikesamuel:json-sanitizer:1.3.0` points builds that still use the old coordinates here; if both artifacts end up on one classpath, exclude the old one.
+
 **Requires Java 8 or later** (was Java 6). The public API is binary-compatible and only adds methods. Code that uses `EvalMinifier` now gets a deprecation warning, which fails builds that compile with `-Werror`.
 
 ### Output changes

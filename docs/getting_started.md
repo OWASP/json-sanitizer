@@ -3,16 +3,25 @@
 ## Importing
 
 You can fetch the jars from
-[Maven Central](https://central.sonatype.com/artifact/com.mikesamuel/json-sanitizer)
+[Maven Central](https://central.sonatype.com/artifact/org.owasp/json-sanitizer)
 or you can let your favorite java package manager handle it for you via
 
 ```Maven
 <dependency>
-  <groupId>com.mikesamuel</groupId>
+  <groupId>org.owasp</groupId>
   <artifactId>json-sanitizer</artifactId>
   <version>1.3.0</version>
 </dependency>
 ```
+
+**New coordinates from 1.3.0.** Releases up to 1.2.3 were published as
+`com.mikesamuel:json-sanitizer`; from 1.3.0 on the library is
+`org.owasp:json-sanitizer`. Only the groupId changed: the artifactId, the Java
+package (`com.google.json`) and the module name stay the same, so no code
+changes. Update the groupId in your build, and make sure the old artifact does
+not also arrive through another dependency: with both on the classpath, the
+same classes exist twice. Exclude `com.mikesamuel:json-sanitizer` there if it
+does.
 
 Pin an exact version, as above: an open range such as `[1.0,)` picks up new
 releases unreviewed. (1.3.0 is the next release; until it is on Maven Central,
