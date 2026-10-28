@@ -200,7 +200,7 @@ Verdict: no Critical or High; none of the seven fixes opens an embed-safety bypa
 
 ## Residuals
 
-- The owner has not yet signed off `APPROVED_DIFFERENCES.md`; the decisions were delegated.
+- `APPROVED_DIFFERENCES.md`: the decisions were delegated; the owner signed the list off himself on 2026-10-28.
 - Q4c changed from the brief's first proposal (64 Mi) to 16 Mi and, after review, to 4 Mi; callers with larger bodies use the `maximumInputLength` overloads.
 - `GoldenCorpusTest` now costs 44 to 50 s per leg (both implementations).
 
