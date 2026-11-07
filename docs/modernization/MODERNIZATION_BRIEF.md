@@ -1,5 +1,8 @@
 # Modernization Brief: json-sanitizer
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 - **Date:** 2026-10-27
 - **System:** OWASP JSON Sanitizer (`com.mikesamuel:json-sanitizer` 1.2.4-SNAPSHOT), the repository at `/Users/jmanico/Dropbox/github/json-sanitizer` (`legacy/json-sanitizer` links to it)
 - **Pattern:** same-stack **uplift** (Replatform), as recommended by the assessment. No phase rewrites the code.

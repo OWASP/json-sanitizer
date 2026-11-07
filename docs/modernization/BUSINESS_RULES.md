@@ -1,5 +1,8 @@
 # Business Rules — json-sanitizer
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 At extraction: 64 confirmed rules (6 P0); later steps may add or correct rules below. Each citation was checked by a second agent that read the cited lines; 2 candidate rules were refuted and left out.
 
 | ID | Name | Category | Priority | Source | Confidence |

@@ -1,5 +1,8 @@
 # Rule reviews — json-sanitizer
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 A person reviewed the P0 business rules flagged for judgement in BUSINESS_RULES.md (a suspected defect, an SME question, or less than High confidence). An outside reviewer then checked each one against the source. 5 rules are recorded, all confirmed. RULE-001 is confirmed with one deliberate change: the rewrite fixes the legacy \v → \u0008 mapping to \v → \u000b, so equivalence tests must expect that difference.
 
 | Rule | Verdict | When | Title | Note |

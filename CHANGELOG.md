@@ -4,12 +4,12 @@
 
 ## 1.3.0 (2026-11-07)
 
-**New Maven coordinates: `org.owasp.json-sanitizer:json-sanitizer`** (was `com.mikesamuel:json-sanitizer`). The artifactId and Java package `com.google.json` are unchanged. The automatic module name changes from `json.sanitizer` to `com.google.json`; module-path users must update their `requires` declaration. A relocation POM for the old coordinates is prepared separately and requires publishing access to `com.mikesamuel`; do not assume it is available until it is published. If both jars end up on one classpath, exclude the old one.
+**New Maven coordinates: `org.owasp.json-sanitizer:json-sanitizer`** (was `com.mikesamuel:json-sanitizer`). The artifactId and Java package `com.google.json` are unchanged. The automatic module name changes from `json.sanitizer` to `com.google.json`; module-path users must update their `requires` declaration. No relocation POM is published under the old coordinates; update dependencies manually. If both jars end up on one classpath, exclude the old one.
 
-**Requires Java 8 or later** (was Java 6). The public API is binary-compatible and only adds methods. Code that uses `EvalMinifier` now gets a deprecation warning, which fails builds that compile with `-Werror`.
+**Requires Java 8 or later** (was Java 6). Existing public method signatures remain available. Code that uses `EvalMinifier` now gets a deprecation warning, which fails builds that compile with `-Werror`.
 
 ### Output changes
-Only these inputs sanitize differently from 1.2.3. The build checks, over 567,123 inputs and seven API calls each, that everything else is byte-for-byte the same as the last pre-release master (`d9b2768`), which already included the two changes marked "since 1.2.3".
+The changes below affect repaired input or minifier output. The compatibility test covers 567,123 inputs and seven API calls each against pre-release master `d9b2768`, allowing the [approved differences](docs/modernization/APPROVED_DIFFERENCES.md). That baseline already included the two changes marked "since 1.2.3"; the corpus is not an exhaustive comparison with the published 1.2.3 jar.
 
 - **Security (CVE-2026-37736, denial of service, #35); over-deep input (since 1.2.3):** an array or object nested deeper than the limit is replaced by `null`. Every release from 1.0 to 1.2.3 threw `ArrayIndexOutOfBoundsException` instead (for example on 65 `[`).
 - **`EvalMinifier` pooling (since 1.2.3):** pooled arguments come in a stable order (1.2.3 used hash order); tokens shorter than four characters at the end of the input are no longer pooled; unprofitable tokens no longer leave an unused parameter and argument; a string ending in a backslash no longer crashes the minifier.
@@ -26,5 +26,4 @@ Only these inputs sanitize differently from 1.2.3. The build checks, over 567,12
 ### Other
 - `EvalMinifier` is deprecated: its output needs `eval`, which a strict Content Security Policy forbids. It keeps working.
 - Nullness annotations are [JSpecify](https://jspecify.dev/) (`provided` scope) instead of jsr305; `sanitize` parameters are `@Nullable`, as `null` was always accepted.
-- The jar has the module name `com.google.json`.
 - Built with JDK 21 and tested on Java 8, 11, 17, 21 and 25; fuzzed with Jazzer on every change.

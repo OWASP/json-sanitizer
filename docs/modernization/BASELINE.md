@@ -1,5 +1,8 @@
 # Baseline: json-sanitizer (legacy build, before the uplift)
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 - **Date:** 2026-10-27
 - **Source:** `legacy/json-sanitizer` → `/Users/jmanico/Dropbox/github/json-sanitizer` at commit `d9b2768` (master). Built from a scratch copy; the source repository was not built in.
 - **Runtime (the oracle):** OpenJDK 11.0.32.1 (Homebrew `openjdk@11`), Apache Maven 3.10.0, the **legacy `pom.xml` unchanged** (`maven.compiler.source/target` 1.6, JUnit 4.13.1, surefire from the Maven 3.10 super-POM). This is the source leg of the dual run.

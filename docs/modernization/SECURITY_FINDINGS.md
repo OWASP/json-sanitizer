@@ -1,5 +1,8 @@
 # Security findings: json-sanitizer
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 - **Date:** 2026-10-27
 - **Source:** `legacy/json-sanitizer`, which links to `/Users/jmanico/Dropbox/github/json-sanitizer`
 - **Scan:** harden-scan workflow `wf_ceca73e6-c01` with 19 agents: 5 class finders (injection, auth/session, secrets, dependency CVEs, input validation), 13 refuters and 1 second judge.

@@ -2,12 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
   <!--
-    Relocation POM, published once to the old coordinates (docs/RELEASING.md,
-    "Relocation"). Releases up to 1.2.3 were com.mikesamuel:json-sanitizer; from 1.3.0
-    the library is org.owasp.json-sanitizer:json-sanitizer. A build that asks for
-    com.mikesamuel:json-sanitizer:1.3.0 gets org.owasp.json-sanitizer:json-sanitizer:1.3.0 and a
-    warning to change its coordinates, and update tools that watch the old coordinates
-    see that 1.3.0 exists. This file is not part of the main build.
+    Prepared but unpublished relocation for 1.3.0; see docs/RELEASING.md.
+    Publishing requires access to com.mikesamuel. Once published, this POM
+    redirects the old coordinates to org.owasp.json-sanitizer:json-sanitizer.
+    This file is not part of the main build.
   -->
   <modelVersion>4.0.0</modelVersion>
 

@@ -1,5 +1,8 @@
 # Playbook: json-sanitizer same-stack uplift (Phase 1, proven on the pilot)
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 - **Date:** 2026-10-27
 - **Scope of this recipe:** Phase 1 of `MODERNIZATION_BRIEF.md`: move the build from Java 6/7 bytecode on an unpinned toolchain to Java 8 bytecode on a pinned one, with live CI, and prove the library's behavior did not change. One Maven module, so the pilot was the whole build. **No file under `src/` changes in this phase.**
 - **Working copy:** `modernized/json-sanitizer-uplifted/` (its own git history; seed commit `9332747` is the legacy tree at `d9b2768`). `legacy/json-sanitizer` is a symlink to the real repository and is never built in or edited.

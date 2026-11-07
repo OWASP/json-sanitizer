@@ -1,6 +1,19 @@
-# Modernization record
+# Modernization archive
 
-A snapshot (2026-10-28) of the analysis and planning behind the 1.3.0 modernization: moving json-sanitizer to Java 8 on a pinned, tested toolchain, fixing its security and correctness bugs, and publishing it as `org.owasp:json-sanitizer`. It records why each change was made and how each was proven; the code and tests in this repository are the source of truth.
+Historical analysis and evidence from October 2026. Preserve these records for
+traceability; their proposed coordinates, pending approvals, local paths and
+intermediate tool requirements are not current instructions.
+
+**Published outcome:** [1.3.0](https://github.com/OWASP/json-sanitizer/releases/tag/v1.3.0)
+shipped November 7, 2026 under `org.owasp.json-sanitizer:json-sanitizer`.
+Signing and Central publishing were completed. The old-coordinate relocation
+was not published. The development branch is now 1.3.1-SNAPSHOT; further
+internal cleanup is optional, not a release prerequisite.
+
+Use the [README](../../README.md), [migration guide](../getting_started.md),
+[changelog](../../CHANGELOG.md) and [release guide](../RELEASING.md) for current
+behavior and procedures. The [original phase notes](UPLIFT_HISTORY.md) preserve
+the detailed implementation history.
 
 Start with:
 
@@ -15,4 +28,4 @@ Start with:
 | [`BUSINESS_RULES.md`](BUSINESS_RULES.md), [`RULE_REVIEWS.md`](RULE_REVIEWS.md) | The sanitizer's behavior as testable rules, and the maintainer's review of them |
 | [`REPORT.html`](REPORT.html), [`TOPOLOGY.html`](TOPOLOGY.html) | Rendered assessment report and code map (download and open in a browser) |
 
-The rest (`*.mmd`, `*.json`, `map/`, `*.py`) are the diagrams, extracted data and scripts behind those documents. Left out: the 8.9 MB file of full legacy golden-corpus outputs (regenerable from the legacy classes with `GoldenCorpus record`, as `BASELINE.md` describes) and compiled class files. Local paths such as `/Users/...` refer to the machine the work was done on.
+The rest (`*.mmd`, `*.json`, `map/`, `*.py`) are the diagrams, extracted data and scripts behind those documents. Left out: the 8.9 MB file of full legacy golden-corpus outputs (regenerable from the legacy classes with `GoldenCorpus record`, as `BASELINE.md` describes) and compiled class files. Paths such as `analysis/json-sanitizer/`, `legacy/`, `modernized/` and `/Users/...` refer to local working directories, not files shipped in this repository. Historical source line numbers refer to the revision analyzed, not current master.

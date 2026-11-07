@@ -1,5 +1,8 @@
 # Approved output differences: json-sanitizer Phase 3
 
+> Historical approval record (October 2026); still the reference list of approved output differences for 1.3.0.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 - **Date:** 2026-10-28
 - **Baseline:** the legacy release at commit `d9b2768` (the oracle of `BASELINE.md`), kept verbatim in `src/test/java/com/google/json/legacy/` and proven by `GoldenCorpusTest` to reproduce `golden-digests.txt` (SHA-256 pinned).
 - **Corpus:** 567,123 inputs, seven calls each (3,969,861 calls): `sanitize(String)`, `sanitize(CharSequence)`, `sanitize(String, 1)`, `sanitize(String, 3)`, `EvalMinifier.minify(String)`, `sanitize(Reader, Appendable)`, `sanitize(InputStream, OutputStream)`.
