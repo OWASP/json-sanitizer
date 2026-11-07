@@ -21,4 +21,4 @@ Out of scope: what the README says the library does not do, such as how client c
 
 ## Supported versions
 
-Security fixes go into the next release from master. Version 1.3.0, the first release built from the modernized code, is in preparation; the 1.2.x line will get no further releases, so its users should move to 1.3.0 when it is published.
+Security fixes go into the next release from master. Version 1.3.0 is the first release built from the modernized code. The 1.2.x line will get no further releases; its users should migrate to 1.3.0 using the new coordinates in the getting-started guide.

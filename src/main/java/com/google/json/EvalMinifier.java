@@ -52,7 +52,9 @@ public final class EvalMinifier {
    *
    * @param jsonish a string of JSON-like content as defined by
    *   {@link JsonSanitizer}.
-   * @return a valid Javascript expression that has no free variables and whose
+   * @return a Javascript expression (except that an object with duplicate
+   *   {@code __proto__} keys is a JavaScript syntax error) that has no free
+   *   variables and whose
    *   execution will have no side-effects, and which can be embedded safely in
    *   an HTML {@code <script></script>} element or inside an XML
    *   {@code <![CDATA[...]]>} section.
