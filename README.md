@@ -27,8 +27,9 @@ to generate JSON outputs.
 Frequently these outputs all pass through a small amount of framework
 code before being sent over the network.  This small amount of
 framework code can use this library to make sure that the ad-hoc
-outputs are standards compliant and safe to pass to (overly) powerful
-deserializers like Javascript's `eval` operator.
+outputs are standards compliant and can be parsed with `JSON.parse`. The
+[output guarantees](#output) also cover embedding in HTML script elements
+and XML CDATA sections.
 
 Applications also often have web service APIs that receive JSON from a
 variety of sources.  When this JSON is created using ad-hoc methods,

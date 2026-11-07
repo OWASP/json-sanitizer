@@ -95,6 +95,12 @@ public final class JsonSanitizerFuzzTest {
     assertStrictJson(out);
     assertEquals(out, JsonSanitizer.sanitize(out, depth), "not idempotent at depth " + depth);
     assertNoBreakout(out);
+    // These are legal in JSON strings but forbidden raw by our output contract;
+    // a strict JSON parser alone cannot catch an escaping regression.
+    for (char ch : new char[] { '\u2028', '\u2029', '\ufffe', '\uffff' }) {
+      assertTrue(out.indexOf(ch) < 0, "raw code unit forbidden by the output contract: "
+          + Integer.toHexString(ch));
+    }
   }
 
   private static void assertNoBreakout(String out) {
