@@ -117,7 +117,7 @@ public final class SecurityFixesTest {
   /**
    * SEC-003 (CWE-770): the Reader and InputStream overloads buffered input
    * without limit, so an endless request body exhausted the heap. Past
-   * maximumInputLength (default 16 Mi chars) they throw IOException before
+   * maximumInputLength (default 4 Mi chars) they throw IOException before
    * sanitizing, and write nothing (Q4c).
    */
   @Test

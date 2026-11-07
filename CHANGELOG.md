@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.3.0 (unreleased)
+## 1.3.0 (2026-11-07)
 
-**New Maven coordinates: `org.owasp:json-sanitizer`** (was `com.mikesamuel:json-sanitizer`). Only the groupId changed; the artifactId, the Java package `com.google.json` and the module name are the same. A relocation POM at `com.mikesamuel:json-sanitizer:1.3.0` points builds that still use the old coordinates here; if both artifacts end up on one classpath, exclude the old one.
+**New Maven coordinates: `org.owasp.json-sanitizer:json-sanitizer`** (was `com.mikesamuel:json-sanitizer`). The artifactId and Java package `com.google.json` are unchanged. The automatic module name changes from `json.sanitizer` to `com.google.json`; module-path users must update their `requires` declaration. A relocation POM for the old coordinates is prepared separately and requires publishing access to `com.mikesamuel`; do not assume it is available until it is published. If both jars end up on one classpath, exclude the old one.
 
 **Requires Java 8 or later** (was Java 6). The public API is binary-compatible and only adds methods. Code that uses `EvalMinifier` now gets a deprecation warning, which fails builds that compile with `-Werror`.
 
@@ -13,12 +13,12 @@ Only these inputs sanitize differently from 1.2.3. The build checks, over 567,12
 - **`EvalMinifier` pooling (since 1.2.3):** pooled arguments come in a stable order (1.2.3 used hash order); tokens shorter than four characters at the end of the input are no longer pooled; unprofitable tokens no longer leave an unused parameter and argument; a string ending in a backslash no longer crashes the minifier.
 - **Security (SEC-001, denial of service):** hex and octal literals with more than 1024 significant digits become `1e999` (JavaScript reads both as `Infinity`). Converting them exactly took time quadratic in their length: a 1,000,000-digit literal took about 26 s (releases 1.2.2 and 1.2.3). A fraction or exponent after such a literal is dropped, so a huge literal with a large negative exponent (a tiny value, and not valid JavaScript to begin with) now reads as `Infinity`.
 - `\v` in strings is U+000B (vertical tab), as in JavaScript; it was U+0008.
-- A value nested deeper than the limit no longer swallows the values after it when it contains a quote inside a word: `[[a'b],"keep",'x']` at depth 1 is `[null,"keep","x"]` (was `[null]`).
+- A value nested deeper than the limit no longer swallows the values after it when it contains a quote inside a word: `[[a'b],"keep",'x']` at depth 1 is `[null,"keep","x"]` (the unreleased pre-modernization baseline produced `[null]`; 1.2.3 threw on excessive nesting).
 - Numeric object keys with exponents near the int limits get the correct exponent: `{11e2147483647:0}` gives `{"1.1e+2147483648":0}` (was `"1.1e--2147483648"`).
 - `EvalMinifier` no longer splits `12345e+1` at the `+` (its output was not valid JavaScript).
 
 ### New API
-- `sanitize(CharSequence)` returns a new `String`, never the caller's object.
+- `sanitize(CharSequence)` returns an immutable `String`, never a mutable input object; it may reuse an already-safe `String`.
 - `sanitize(Reader, Appendable)` and `sanitize(InputStream, OutputStream)` (UTF-8) read the whole input, and reject input longer than `DEFAULT_MAXIMUM_INPUT_LENGTH` (4 Mi chars) with an `IOException`; overloads with a `maximumInputLength` change the limit.
 
 ### Other

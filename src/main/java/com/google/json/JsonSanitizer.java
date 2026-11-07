@@ -79,7 +79,8 @@ import org.jspecify.annotations.Nullable;
  *   object repeating the key {@code __proto__} is a syntax error there.  No
  *   string contains a raw U+2028 or U+2029.
  * <li>Inside strings, U+0000 to U+001F, lone UTF-16 surrogates, U+2028, U+2029,
- *   U+FFFE and U+FFFF are written as <code>&#92;u</code><i>XXXX</i> escapes;
+ *   U+FFFE and U+FFFF use JSON escapes (short forms such as {@code \t}
+ *   and {@code \n}, or <code>&#92;u</code><i>XXXX</i>);
  *   between tokens only space, tab, line feed and carriage return appear.
  *   Other characters, U+007F to U+009F included, appear as they are, so the
  *   output is valid Unicode and allowed in XML 1.0.  An escaped lone
@@ -103,9 +104,10 @@ import org.jspecify.annotations.Nullable;
  * {@code maximumInputLength}.  The library runs on Java 8 and later.
  *
  * <h2>Security</h2>
- * Since the output is well-formed JSON, passing it to <code>eval</code> will
- * have no side-effects and no free variables, so is neither a code-injection
- * vector, nor a vector for exfiltration of secrets.
+ * Parse sanitized output with {@code JSON.parse}. Unlike JavaScript object
+ * expressions, JSON parsing treats {@code __proto__} as an ordinary property
+ * name. Sanitization does not validate application-specific values or authorize
+ * actions on them.
  *
  * <p>This library only ensures that the JSON string &rarr; Javascript object
  * phase has no side effects and resolves no free variables, and cannot control
@@ -142,8 +144,8 @@ public final class JsonSanitizer {
   public static final int DEFAULT_MAXIMUM_INPUT_LENGTH = 1 << 22;
 
   /**
-   * Given JSON-like content, produces a string of JSON that is safe to embed,
-   * safe to pass to JavaScript's {@code eval} operator.
+   * Given JSON-like content, produces JSON that can be parsed with
+   * {@code JSON.parse} and embedded as described in the class output guarantees.
    *
    * @param jsonish JSON-like content.
    * @return embeddable JSON
@@ -171,12 +173,13 @@ public final class JsonSanitizer {
    * {@link CharSequence}, such as a {@link StringBuilder} or the characters of
    * a string value from another JSON library.
    * <p>
-   * The content is copied once into a {@code String} before sanitizing, so
-   * later changes to {@code jsonish} do not affect the result.
+   * The content is converted to an immutable {@code String} before sanitizing,
+   * so later changes to a mutable {@code jsonish} do not affect the result.
+   * An already-safe {@code String} input may be returned unchanged.
    *
    * @param jsonish JSON-like content.
-   * @return embeddable JSON, always as an immutable {@code String}, never
-   *     {@code jsonish} itself, even when it is already embeddable JSON.
+   * @return embeddable JSON as an immutable {@code String}; may reuse a
+   *     {@code String} input, but never returns a mutable input object.
    */
   public static String sanitize(@Nullable CharSequence jsonish) {
     return sanitize(jsonish, DEFAULT_NESTING_DEPTH);
@@ -188,8 +191,8 @@ public final class JsonSanitizer {
    *
    * @param jsonish JSON-like content.
    * @param maximumNestingDepth maximum nesting depth.
-   * @return embeddable JSON, always as an immutable {@code String}, never
-   *     {@code jsonish} itself, even when it is already embeddable JSON.
+   * @return embeddable JSON as an immutable {@code String}; may reuse a
+   *     {@code String} input, but never returns a mutable input object.
    */
   public static String sanitize(
       @Nullable CharSequence jsonish, int maximumNestingDepth) {
@@ -199,8 +202,8 @@ public final class JsonSanitizer {
     JsonSanitizer s = new JsonSanitizer(
         jsonish.toString(), maximumNestingDepth);
     s.sanitize();
-    // Never the caller's object: a mutable one could change after it was
-    // checked (SEC-002).
+    // Never return a mutable input object: it could change after it was
+    // checked (SEC-002). Reusing an immutable String is safe.
     return s.toString();
   }
 
@@ -335,8 +338,9 @@ public final class JsonSanitizer {
    *     least 0.
    * @throws IOException if reading {@code in} or writing {@code out} fails, or
    *     {@code in} decodes to more than {@code maximumInputLength} chars, in
-   *     which case nothing is written to {@code out}, and up to 8 KiB more of
-   *     {@code in} than the limit may have been read.
+   *     which case nothing is written to {@code out}. The Reader loop may read
+   *     up to 8192 decoded characters beyond the limit; the UTF-8 decoder may
+   *     read additional bytes ahead. This is a character limit, not a byte limit.
    * @throws IllegalArgumentException if {@code maximumInputLength} is negative.
    */
   public static void sanitize(
