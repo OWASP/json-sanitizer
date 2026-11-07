@@ -1,6 +1,6 @@
 # Approved output differences: json-sanitizer Phase 3
 
-> Historical modernization record (October 2026), not current setup or release guidance.
+> Historical approval record (October 2026); still the reference list of approved output differences for 1.3.0.
 > See the [archive index](README.md) for the published outcome and current documentation.
 
 - **Date:** 2026-10-28
