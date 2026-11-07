@@ -121,8 +121,8 @@ import org.jspecify.annotations.Nullable;
  * {@code sanitize(String)} returns the input string itself, without allocating
  * a new buffer, when the input is already valid JSON that satisfies the
  * properties above.  Thus, if used on input that is usually well formed, it
- * has minimal memory overhead.  ({@code sanitize(CharSequence)} always copies
- * its input once.)
+ * has minimal memory overhead. {@code sanitize(CharSequence)} converts its
+ * input to an immutable {@code String} before sanitizing.
  * <p>The sanitize method takes O(n) time where n is the length in UTF-16
  * code-units.
  */
