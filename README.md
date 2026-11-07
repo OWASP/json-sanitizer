@@ -1,49 +1,36 @@
-# json-sanitizer [![CI](https://github.com/OWASP/json-sanitizer/actions/workflows/ci.yml/badge.svg)](https://github.com/OWASP/json-sanitizer/actions/workflows/ci.yml) [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/json-sanitizer.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:json-sanitizer)
+# OWASP JSON Sanitizer
 
+[![CI](https://github.com/OWASP/json-sanitizer/actions/workflows/ci.yml/badge.svg)](https://github.com/OWASP/json-sanitizer/actions/workflows/ci.yml)
 
-Given JSON-like content, The JSON Sanitizer converts it to valid JSON.
+Converts JSON-like text into valid JSON, with escaping for HTML script elements
+and XML CDATA sections. It repairs input rather than rejecting malformed JSON;
+use a strict parser when invalid input must be rejected.
 
-[Getting Started](https://github.com/OWASP/json-sanitizer/blob/master/docs/getting_started.md) - [Contact](https://github.com/OWASP/json-sanitizer/blob/master/docs/contact.md)
+Requires **Java 8 or later**, with no runtime dependencies.
 
-This can be attached at either end of a data-pipeline to help satisfy
-Postel's principle:
+```xml
+<dependency>
+  <groupId>org.owasp.json-sanitizer</groupId>
+  <artifactId>json-sanitizer</artifactId>
+  <version>1.3.0</version>
+</dependency>
+```
 
-> be conservative in what you do, be liberal in what you accept from others
+```java
+import com.google.json.JsonSanitizer;
 
-Applied to JSON-like content from others, it will produce well-formed JSON
-that should satisfy any parser you use.
+String json = JsonSanitizer.sanitize("{name:'Ada',}");
+// {"name":"Ada"}
+```
 
-Applied to your output before you send, it will coerce minor mistakes in
-encoding and make it easier to embed your JSON in HTML and XML.
-
-
-## Motivation
-
-![Architecture](https://github.com/OWASP/json-sanitizer/blob/master/docs/JSON-Sanitizer-Arch.png)
-
-Many applications have large amounts of code that uses ad-hoc methods
-to generate JSON outputs.
-
-Frequently these outputs all pass through a small amount of framework
-code before being sent over the network.  This small amount of
-framework code can use this library to make sure that the ad-hoc
-outputs are standards compliant and can be parsed with `JSON.parse`. The
-[output guarantees](#output) also cover embedding in HTML script elements
-and XML CDATA sections.
-
-Applications also often have web service APIs that receive JSON from a
-variety of sources.  When this JSON is created using ad-hoc methods,
-this library can massage it into a form that is easy to parse.
-
-By hooking this library into the code that sends and receives requests
-and responses, this library can help software architects ensure
-system-wide security and well-formedness guarantees.
-
+[Getting started and migration](docs/getting_started.md) ·
+[Changelog](CHANGELOG.md) · [Security policy](SECURITY.md) ·
+[Contact](docs/contact.md)
 
 ## Input
 
-The sanitizer takes JSON like content, and interprets it as JS eval would.
-Specifically, it deals with these non-standard constructs.
+The sanitizer repairs common JavaScript-like syntax without executing it.
+It is not a JavaScript evaluator.
 
 | Construct     | Policy                                                        |
 |---------------|---------------------------------------------------------------|
@@ -66,7 +53,7 @@ the valid JSON string `null` is substituted.
 
 ## Output
 
-The output satisfies these guarantees, which the `JsonSanitizer` javadoc lists identically:
+The output has these guarantees (also documented in the `JsonSanitizer` Javadoc):
 
  1. It is exactly one JSON value as defined by [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259). Anything after the first complete value, a top-level comma or an unmatched close bracket is dropped: `[1]],alert(1)` becomes `[1]`.
  2. It does not contain `<script`, `</script`, `<!--` or `-->`, in any case, so it can be embedded in an HTML script element without further encoding.
@@ -80,49 +67,43 @@ Brackets nest at most 64 levels deep by default (`DEFAULT_NESTING_DEPTH`), or as
 
 ## Requirements and limits
 
- * **Java 8 or later.** The jar's module name is `com.google.json`; it has no runtime dependencies. Its nullness annotations are [JSpecify](https://jspecify.dev/), declared `provided`: Kotlin or NullAway users who want them checked add `org.jspecify:jspecify:1.0.1` to their own build.
- * `sanitize(String)` and `sanitize(CharSequence)` take time linear in the input. `sanitize(CharSequence)` returns an immutable `String`; an already-safe `String` input may be returned unchanged.
- * `sanitize(Reader, Appendable)` and `sanitize(InputStream, OutputStream)` (UTF-8) read the whole input into memory, and output can be six times as long. They reject input longer than 4 Mi chars (`DEFAULT_MAXIMUM_INPUT_LENGTH`) with an `IOException` and write nothing (the Reader loop may read up to 8 Ki chars past the limit; UTF-8 decoding may read additional bytes ahead); overloads with a `maximumInputLength` parameter change the limit. Malformed UTF-8 becomes U+FFFD; a byte-order mark before the value is dropped.
-
-
-## EvalMinifier (deprecated)
-
-`EvalMinifier` turns sanitized JSON into a smaller JavaScript expression that must be run with `eval`, which a strict Content Security Policy forbids, and compression makes the savings small. It keeps working and is covered by the same tests, but new code should send `JsonSanitizer` output and parse it with `JSON.parse`.
-
+- Java 8 or later; automatic module name `com.google.json`.
+- String and CharSequence input takes O(n) time in UTF-16 code units. Results
+  are immutable strings; an already-safe String may be reused. These overloads
+  have no input-length limit, so callers must bound untrusted input themselves.
+- Reader and UTF-8 InputStream overloads buffer the whole input. The default
+  limit is 4,194,304 UTF-16 code units, configurable with `maximumInputLength`.
+  Exceeding it throws `IOException` before any output is written. The Reader
+  loop may read up to 8,192 characters beyond the limit; UTF-8 decoding can read
+  additional bytes ahead. This is not a byte or network-request limit.
+- Output can expand to roughly six times the input length. Allow heap space for
+  input, output and temporary buffers; the input limit is not a heap limit.
+- Malformed UTF-8 decodes to U+FFFD. Streams are not closed; the OutputStream
+  overload flushes its output.
+- Nullness annotations use JSpecify in `provided` scope. Add
+  `org.jspecify:jspecify:1.0.1` to your build if your analysis tools need them.
 
 ## Security
 
-Parse sanitized output with `JSON.parse`. Unlike JavaScript object expressions,
-JSON parsing treats `__proto__` as an ordinary property name. Sanitization does
-not validate application-specific values or authorize actions on them.
+Parse output with `JSON.parse` or a JSON parser. Sanitization does not validate
+business rules, authorize actions, or make parsed values safe for `innerHTML`,
+SQL, shell commands, or later JavaScript execution. The embedding guarantees
+above do not apply to HTML attributes or arbitrary output contexts.
 
-This library only ensures that the JSON string → Javascript object
-phase has no side effects and resolves no free variables, and cannot
-control how other client side code later interprets the resulting
-Javascript object.  So if client-side code takes a part of the parsed
-data that is controlled by an attacker and passes it back through a
-powerful interpreter like `eval` or `innerHTML` then that client-side
-code might suffer unintended side-effects.
+`EvalMinifier` is deprecated. It produces a JavaScript expression requiring
+execution, rather than JSON for `JSON.parse`; a strict Content Security Policy
+blocks `eval`. Keep it only for existing integrations.
 
-```JavaScript
-var myValue = JSON.parse(sanitizedJsonString);
-var myEmbeddedValue = eval(myValue.foo);  // possibly unsafe
+## Development
+
+Build with JDK 17 or later and Maven 3.6.3 or later in the 3.x series:
+
+```sh
+mvn -B -ntp clean verify
 ```
 
-Additionally, sanitizing JSON cannot protect an application from
-[Confused Deputy attacks](http://en.wikipedia.org/wiki/Confused_deputy_problem)
-
-```JavaScript
-var myValue = JSON.parse(sanitizedJsonString);
-addToAdminstratorsGroup(myValue.propertyFromUntrustedSource);
-```
-
-# Performance
-
-`sanitize(String)` returns the input string itself, without allocating a new
-buffer, when the input is already valid JSON that satisfies the properties
-above.  Thus, if used on input that is usually well formed, it has minimal
-memory overhead.  (`sanitize(CharSequence)` converts its input to an immutable `String` before sanitizing.)
-
-The sanitize method takes O(n) time where n is the length of the input
-in UTF-16 code-units, including for very long number literals.
+CI builds on JDK 21 and tests on Java 8, 11, 17, 21 and 25, with Jazzer fuzzing
+and an OSS-Fuzz build check. See [MODELS.md](MODELS.md) for model-assisted review
+and [the release guide](docs/RELEASING.md) for publishing.
+The [modernization archive](docs/modernization/README.md) preserves historical
+decisions and evidence; it is not current setup guidance.

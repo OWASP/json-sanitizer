@@ -1,12 +1,8 @@
-# Getting Started
+# Getting started
 
-## Importing
+Use Java 8 or later. Add the published Maven dependency:
 
-You can fetch the jars from
-[Maven Central](https://central.sonatype.com/artifact/org.owasp.json-sanitizer/json-sanitizer)
-or you can let your favorite java package manager handle it for you via
-
-```Maven
+```xml
 <dependency>
   <groupId>org.owasp.json-sanitizer</groupId>
   <artifactId>json-sanitizer</artifactId>
@@ -14,38 +10,45 @@ or you can let your favorite java package manager handle it for you via
 </dependency>
 ```
 
-**New coordinates from 1.3.0.** Releases up to 1.2.3 were published as
-`com.mikesamuel:json-sanitizer`; from 1.3.0 on the library is
-`org.owasp.json-sanitizer:json-sanitizer`. The artifactId and Java
-package (`com.google.json`) are unchanged. The automatic module name changes
-from `json.sanitizer` to `com.google.json`: update `requires json.sanitizer;`
-to `requires com.google.json;` in `module-info.java`. Update the groupId in your
-build, and make sure the old artifact does
-not also arrive through another dependency: with both on the classpath, the
-same classes exist twice. Exclude `com.mikesamuel:json-sanitizer` there if it
-does.
+Artifacts are on [Maven Central](https://central.sonatype.com/artifact/org.owasp.json-sanitizer/json-sanitizer/1.3.0).
 
-Pin an exact version, as above: an open range such as `[1.0,)` picks up new
-releases unreviewed. Version 1.3.0 needs Java 8 or later; it changes the output
-for a few malformed or hostile inputs, listed in the
-[changelog](https://github.com/OWASP/json-sanitizer/blob/master/CHANGELOG.md).
-
-Once you've got the JSON sanitizer JAR on your classpath,
-
-```Java
+```java
 import com.google.json.JsonSanitizer;
+
+String json = JsonSanitizer.sanitize("{name:'Ada',}");
+// {"name":"Ada"}
 ```
 
-will let you call
+Parse the result with a JSON parser, such as JavaScript's `JSON.parse`.
+Sanitization repairs input; it does not validate a schema or business rules.
+See the [output guarantees](../README.md#output) and
+[resource limits](../README.md#requirements-and-limits) before handling untrusted input.
 
-```Java
-String wellFormedJson = JsonSanitizer.sanitize(myJsonLikeString);
+## Bounded input
+
+Reader and UTF-8 stream overloads buffer the entire input. For example, this
+accepts up to 100,000 UTF-16 code units with a nesting limit of 64:
+
+```java
+// reader is a java.io.Reader; writer is a java.io.Writer.
+JsonSanitizer.sanitize(reader, writer, 64, 100_000);
 ```
 
-That's it.  Now `wellFormedJson` is a string of well-formed JSON that
-can be parsed with `JSON.parse`. See the [output guarantees](../README.md#output)
-for embedding in HTML script elements or XML CDATA sections; they do not cover
-arbitrary HTML attributes or other contexts.
+Handle `IOException`. Input exceeding the length limit produces no output;
+other I/O failures can leave partial output. Neither stream is closed.
+Enforce a separate byte limit and timeout at the network boundary.
 
-If you have further questions, check our
-[support list](https://groups.google.com/forum/#!forum/json-sanitizer-support).
+## Migrating from 1.2.3
+
+- Change `com.mikesamuel:json-sanitizer` to
+  `org.owasp.json-sanitizer:json-sanitizer:1.3.0`. No relocation is published
+  under the old coordinates. Exclude the old artifact if a transitive dependency
+  still brings it in, to avoid duplicate classes.
+- Upgrade from Java 6 to Java 8 or later. Java imports stay `com.google.json`.
+- On the module path, change `requires json.sanitizer;` to
+  `requires com.google.json;`.
+- Review the [changelog](../CHANGELOG.md) for repaired-input differences,
+  stream limits and `EvalMinifier` deprecation. Deprecation warnings can fail
+  builds that use `-Werror`.
+
+For questions or bug reports, see [Contact](contact.md).

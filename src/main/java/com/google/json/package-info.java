@@ -1,6 +1,6 @@
 /**
- * Turns JSON-like content into JSON that is safe to embed in HTML and XML and
- * to pass to JavaScript: see {@link com.google.json.JsonSanitizer}.
+ * Repairs JSON-like content into JSON. For supported HTML script and XML CDATA
+ * embedding contexts and their limits, see {@link com.google.json.JsonSanitizer}.
  * <p>
  * Parameters and results are non-null unless annotated {@code @Nullable}.
  */

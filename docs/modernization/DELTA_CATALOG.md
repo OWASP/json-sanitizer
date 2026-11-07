@@ -1,5 +1,8 @@
 # Delta Catalog: json-sanitizer
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 - **Date:** 2026-10-27
 - **Source:** Java 1.6 bytecode (`maven.compiler.source/target` 1.6, `pom.xml:238-239`; 1.7 in profile `jdk12on`, `pom.xml:276-284`), JUnit 4.13.1 with a JUnit 3/4 hybrid suite, jsr305 3.0.2 `provided`, unpinned compiler/surefire, jacoco 0.8.5, spotbugs 3.1.12.2, javadoc 3.1.1, source 3.2.1, nexus-staging 1.6.8, gpg 1.6, Travis CI.
 - **Target (provisional, the human has not chosen):** `maven.compiler.release=8`, built on an LTS JDK (21 or 25), tested on JDK 8, 11, 17, 21 and 25; pinned modern plugins; JUnit 5; JSpecify; `Automatic-Module-Name`; Central Portal publishing; GitHub Actions.

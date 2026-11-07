@@ -1,5 +1,8 @@
 # Data Objects — json-sanitizer
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 ## JsonSanitizer: input and configuration (instance fields)
 Source: `legacy/json-sanitizer/src/main/java/com/google/json/JsonSanitizer.java:109`
 

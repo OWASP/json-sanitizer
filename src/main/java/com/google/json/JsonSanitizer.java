@@ -27,22 +27,12 @@ import java.nio.charset.Charset;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Given JSON-like content, converts it to valid JSON.
- * This can be attached at either end of a data-pipeline to help satisfy
- * Postel's principle:
- * <blockquote>
- * be conservative in what you do, be liberal in what you accept from others
- * </blockquote>
- * <p>
- * Applied to JSON-like content from others, it will produce well-formed JSON
- * that should satisfy any parser you use.
- * <p>
- * Applied to your output before you send, it will coerce minor mistakes in
- * encoding and make it easier to embed your JSON in HTML and XML.
+ * Repairs JSON-like text into valid JSON, with escaping for HTML script
+ * elements and XML CDATA sections as described below. This is a repair tool,
+ * not a strict validator or a JavaScript evaluator.
  *
  * <h2>Input</h2>
- * The sanitizer takes JSON like content, and interprets it as JS eval would.
- * Specifically, it deals with these non-standard constructs.
+ * Handles these non-standard constructs without executing input:
  * <ul>
  * <li>{@code '...'} Single quoted strings are converted to JSON strings.
  * <li>{@code \xAB} Hex escapes are converted to JSON unicode escapes.
@@ -62,7 +52,7 @@ import org.jspecify.annotations.Nullable;
  * JSON string {@code null} is substituted.
  *
  * <h2>Output</h2>
- * The output satisfies these guarantees, which the README lists identically:
+ * The output satisfies these guarantees (also documented in the README):
  * <ol>
  * <li>It is exactly one JSON value as defined by
  *   <a href="https://www.rfc-editor.org/rfc/rfc8259">RFC 8259</a>.  Anything
@@ -137,9 +127,8 @@ public final class JsonSanitizer {
   /**
    * The default for the maximumInputLength parameter of the Reader and
    * InputStream overloads: 4 Mi chars (4,194,304).  Output can be six times
-   * as long as the input, so the worst case at this limit (every char
-   * escaped) needs a heap of about 128 MB on Java 21 and 192 MB on Java 8,
-   * whose strings are always UTF-16: roughly 30 to 45 bytes per input char.
+   * as long as the input. Allow heap space for input, output and temporary
+   * buffers; this character limit is not a heap-memory limit.
    */
   public static final int DEFAULT_MAXIMUM_INPUT_LENGTH = 1 << 22;
 
@@ -248,7 +237,8 @@ public final class JsonSanitizer {
    * @param in JSON-like content.
    * @param out receives embeddable JSON.
    * @param maximumNestingDepth maximum nesting depth.
-   * @param maximumInputLength the most chars read from {@code in}; at least 0.
+   * @param maximumInputLength maximum accepted UTF-16 code units; at least 0.
+   *     The Reader loop may read up to 8192 characters beyond this limit.
    * @throws IOException if reading {@code in} or writing {@code out} fails, or
    *     {@code in} holds more than {@code maximumInputLength} chars, in which
    *     case nothing is written to {@code out}.
@@ -507,7 +497,7 @@ public final class JsonSanitizer {
             }
 
             // Strip trailing comma to convert {"a":0,} -> {"a":0}
-            // and [1,2,3,] -> [1,2,3,]
+            // and [1,2,3,] -> [1,2,3]
             switch (state) {
               case BEFORE_VALUE:
                 insert(i, "null");

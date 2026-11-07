@@ -1,5 +1,8 @@
 # Preflight: json-sanitizer
 
+> Historical modernization record (October 2026), not current setup or release guidance.
+> See the [archive index](README.md) for the published outcome and current documentation.
+
 - **Date:** 2026-10-27
 - **Source:** `legacy/json-sanitizer` → symlink to `/Users/jmanico/Dropbox/github/json-sanitizer` (the repository itself)
 - **Target stack:** none given. The goal is "understand" (see `INTENT.md`).

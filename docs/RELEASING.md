@@ -1,38 +1,69 @@
-# Releasing json-sanitizer
+# Releasing JSON Sanitizer
 
-Releases go to Maven Central through the [Central Portal](https://central.sonatype.com/). The `release` workflow (`.github/workflows/release.yml`) runs on a `v*` tag. Its first job verifies the tagged commit with no secrets. Its second job, once a maintainer approves the `release` environment, signs the artifacts and **stages** them. Nothing is published until a maintainer publishes the validated deployment in the portal by hand.
+Publish `org.owasp.json-sanitizer:json-sanitizer` through the
+[Central Portal](https://central.sonatype.com/publishing/deployments).
+The [release workflow](../.github/workflows/release.yml) verifies, signs and
+stages a tagged release. A maintainer then publishes it in the portal.
 
-## One-time setup (repository administrators)
+## Credentials and repository controls
 
-The manual gate is only as strong as these settings. Without them, anyone with write access could reach the signing key and the publishing token.
+Before a release, check:
 
-1. **Namespace.** The library is published as `org.owasp.json-sanitizer:json-sanitizer`. The releasing maintainer's Central Portal account must be a publisher for the verified `org.owasp.json-sanitizer` namespace (portal, Namespaces). Releases up to 1.2.3 were `com.mikesamuel:json-sanitizer`, held by Mike Samuel, the original author; see **Relocation** below.
-2. **Signing key.** The releasing maintainer's own GPG key; it need not be the key earlier releases were signed with. Publish its public half to a key server (for example `keys.openpgp.org`) before the first release.
-3. **Environment `release`** (Settings, Environments):
-   - Required reviewers: the maintainers allowed to release. With two or more, turn on **Prevent self-review**, so the person who pushes a tag cannot approve it. A sole maintainer leaves it off (it would block every release); the approval still stops an accidental tag, and the settings below still keep the key away from every other workflow.
-   - Deployment branches and tags: **selected tags only**, pattern `v*`.
-   - **Environment secrets** (not repository secrets, which every workflow on every branch can read): `CENTRAL_TOKEN_USERNAME` and `CENTRAL_TOKEN_PASSWORD` (a Central Portal user token), `GPG_PRIVATE_KEY` (ASCII-armored) and `GPG_PASSPHRASE`, for example `gh secret set GPG_PRIVATE_KEY --env release < private.asc`.
-4. **Tag ruleset** (Settings, Rules): only release maintainers may create, update or delete tags matching `v*`.
+- The Central account has publishing access to `org.owasp.json-sanitizer` and
+  its user token is valid. An expired token needs renewal before the next release;
+  it does not affect artifacts already published.
+- The signing key is valid and its public key is available from a keyserver.
+  Keep a secure backup of the private key and its passphrase.
+- GitHub environment `release` holds `CENTRAL_TOKEN_USERNAME`,
+  `CENTRAL_TOKEN_PASSWORD`, `GPG_PRIVATE_KEY` (ASCII-armored) and `GPG_PASSPHRASE`.
+  Keep these as environment secrets, not repository secrets.
+- The environment requires release-maintainer approval and allows only tags
+  matching `v*`. With multiple maintainers, enable **Prevent self-review**;
+  a sole maintainer must be able to approve their own run.
+- A tag ruleset restricts creation, updates and deletion of `v*` tags to release
+  maintainers.
 
-## Each release
+## Release steps
 
-1. Open a pull request that sets `<version>` in `pom.xml` to the release (for example `1.3.0`, no `-SNAPSHOT`) and renames the `CHANGELOG.md` heading "1.3.0 (unreleased)" to the release date. Merge it once CI is green.
-2. Tag that commit on master and push the tag: `git tag -s v1.3.0 && git push origin v1.3.0`. The `verify` job checks that the commit is on master, that the tag names the pom's version, that the POM declares no compile or runtime dependency, and runs every test (golden corpus included) on JDK 21 and Java 8.
-3. When `verify` is green, an authorized maintainer approves the `release` environment (a different maintainer from the tag pusher when there are two or more).
-4. When the `stage` job ends, the deployment is **validated, not published**. **Publish only if the whole workflow run is green;** otherwise press Drop in the portal. In the Central Portal, under Deployments, check the files (jar, sources, javadoc, POM, signatures), then publish.
-5. Confirm `docs/getting_started.md` and `SECURITY.md` describe the published version. Publish the relocation below if old-namespace access is available; otherwise state explicitly that users must change coordinates manually. Do not announce relocation as available before it is published.
-6. Open a pull request that sets the next `-SNAPSHOT` version and starts a new "unreleased" changelog heading.
+1. Open a PR setting `pom.xml` to the release version (no `-SNAPSHOT`) and dating
+   its changelog entry. Update installation examples and supported-version
+   guidance. Merge after review and green CI.
+2. Sign and push a tag on that merged commit, matching the POM version:
 
-## Relocation (once, with 1.3.0)
+   ```sh
+   git tag -s vX.Y.Z -m 'Release X.Y.Z'
+   git push origin vX.Y.Z
+   ```
 
-`relocation/pom.xml` is a POM-only artifact, `com.mikesamuel:json-sanitizer:1.3.0`, whose `<relocation>` points at `org.owasp.json-sanitizer:json-sanitizer`. Builds that still name the old coordinates then get 1.3.0 with a warning to change them, and update tools that watch the old coordinates (Dependabot, the versions plugin) see that 1.3.0 exists. Without it, users of the old coordinates never hear of 1.3.0 or its security fixes.
+3. Wait for the workflow's `verify` job. It checks the tag and dependencies,
+   then runs the full tests on JDK 21 and Java 8. Approve the `release`
+   environment only after it passes.
+4. Wait for the **whole workflow** to succeed. In Central, confirm the validated
+   deployment has the right coordinates, jar, sources, Javadoc, POM and
+   signatures. Publish it. If staging or verification failed, investigate and
+   drop the unpublished deployment instead.
+5. Wait for `PUBLISHED`. Download the public artifacts and verify their
+   signatures and checksums. Publish GitHub release notes with migration steps.
+   Central release versions cannot be replaced; corrections need a new version.
+6. Merge a follow-up PR with the next `-SNAPSHOT` version and an unreleased
+   changelog heading.
 
-Publishing it needs publisher rights on `com.mikesamuel`. Mike Samuel, as a known publisher, asks [Central Support](https://central.sonatype.org/faq/what-happened-to-issues-sonatype-org) to add the maintainer's portal account; or Mike publishes it himself, signed with his own key. After 1.3.0 itself is published, from a clone of the release tag, with the Central user token as `<server id="central">` in `~/.m2/settings.xml`:
+## Optional relocation from the old coordinates
 
-```
+**Not published for 1.3.0.** Users must change their dependency groupId manually.
+This does not block releases under the OWASP project namespace.
+
+[relocation/pom.xml](../relocation/pom.xml) can publish the POM-only artifact
+`com.mikesamuel:json-sanitizer:1.3.0`, pointing to the new coordinates. It requires
+publishing rights to `com.mikesamuel`; the existing publisher must arrange access
+with Central Support or publish it themselves.
+
+Once authorized, use a clone of the 1.3.0 tag, a signing key and Central token
+configured as Maven server `central`:
+
+```sh
 mvn -B -f relocation/pom.xml clean deploy
 ```
 
-This signs the POM and stages it unpublished, like a release; check it in the portal (one `.pom` and its `.asc`), then publish. It is a one-time step: later releases are published only as `org.owasp.json-sanitizer:json-sanitizer`.
-
-The previous `RELEASE-checklist.sh` described OSSRH, which Sonatype retired in 2025; it is gone.
+This stages the relocation only. Verify its POM and signature in Central, then
+publish it. Announce automatic relocation only after it is publicly available.
