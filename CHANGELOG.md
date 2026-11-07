@@ -1,5 +1,7 @@
 # Changelog
 
+## 1.3.1 (unreleased)
+
 ## 1.3.0 (2026-11-07)
 
 **New Maven coordinates: `org.owasp.json-sanitizer:json-sanitizer`** (was `com.mikesamuel:json-sanitizer`). The artifactId and Java package `com.google.json` are unchanged. The automatic module name changes from `json.sanitizer` to `com.google.json`; module-path users must update their `requires` declaration. A relocation POM for the old coordinates is prepared separately and requires publishing access to `com.mikesamuel`; do not assume it is available until it is published. If both jars end up on one classpath, exclude the old one.

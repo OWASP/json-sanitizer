@@ -12,7 +12,7 @@
   <packaging>jar</packaging>
 
   <!-- Releases: docs/RELEASING.md. A -SNAPSHOT version cannot be released. -->
-  <version>1.3.0</version>
+  <version>1.3.1-SNAPSHOT</version>
   <name>json-sanitizer</name>
   <description>
 Given JSON-like content, converts it to valid JSON.
